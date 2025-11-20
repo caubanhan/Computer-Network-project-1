@@ -1,5 +1,4 @@
 add_executable(client
-    main.cpp
     Client.cpp
 )
 

@@ -1,4 +1,7 @@
 
+#pragma once
+#include <vector>
+#include <cstdint>
 class RtpPacket {
 private:
     char header[12];
@@ -6,12 +9,9 @@ private:
     int seqNum;
     int timestamp;
     int ssrc;
+	size_t offset;
 public:
     RtpPacket();
-    void buildPacket(char* data, int size);
-    void decodePacket(char* buffer, int size);
-    char* getPacketBuffer();
-    int getPacketSize();
-    unsigned char* getPayload();
-    int getPayloadSize();
+	void beginFrame(const uint8_t* frameData, int frameSize); // Initialize RTP packet with frame data
+	bool getNextPacket(uint8_t* outBuffer, int& outSize); // Get next RTP packet
 };

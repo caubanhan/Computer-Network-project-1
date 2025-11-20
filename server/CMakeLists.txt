@@ -1,7 +1,13 @@
 add_executable(server
     main.cpp
     ServerWorker.cpp
+    Server.cpp
+    VideoStream.cpp
 )
 
-target_include_directories(server PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(server PRIVATE common ws2_32)
+target_link_libraries(server PRIVATE common)
+
+target_link_libraries(server PRIVATE
+    common        # common is target
+    ws2_32
+)
