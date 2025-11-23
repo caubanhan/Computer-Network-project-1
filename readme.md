@@ -4,8 +4,8 @@ Simple client/server network project (C++17, CMake + Ninja).
 This repository contains a networked server and a client implementation built with CMake (Ninja generator) and tested with Visual Studio 2022.
 
 ## Contents
-- `server/` — server implementation (sources: `Server.h`, `Server.cpp`, `ServerWorker.h`, `ServerWorker.cpp`, `main.cpp`)
-- `client/` — client implementation (sources: `Client.h`, `Client.cpp`, `main_client.cpp`)
+- `server/` ï¿½ server implementation (sources: `Server.h`, `Server.cpp`, `ServerWorker.h`, `ServerWorker.cpp`, `main.cpp`)
+- `client/` ï¿½ client implementation (sources: `Client.h`, `Client.cpp`, `main_client.cpp`)
 - `CMakeLists.txt` and build configuration at repository root
 
 ## Goals
@@ -32,7 +32,7 @@ cd build
 2. Configure the project with CMake:
 
 ```bash
-cmake -G Ninja ..
+cmake -G Ninja 
 ```
 
 3. Build the project:
@@ -72,9 +72,9 @@ Notes:
 - If builds fail, confirm you have Ninja installed and that `cmake` on PATH is the required version.
 
 ## File layout
-- `server/` — RTSP server code and worker threads
-- `client/` — simple RTSP client examples
-- `common/` — shared helpers (e.g., `RtpPacket.h`) — (if present in repo)
+- `server/` ï¿½ RTSP server code and worker threads
+- `client/` ï¿½ simple RTSP client examples
+- `common/` ï¿½ shared helpers (e.g., `RtpPacket.h`) ï¿½ (if present in repo)
 
 ## Contributing
 - Open PRs for fixes/features.
