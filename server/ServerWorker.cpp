@@ -53,7 +53,7 @@ void ServerWorker::processRtspRequest()
     size_t portStart = portPos + strlen("client_port=");
 	std::string portStr = request.substr(portStart, line3End - portStart); // portStr = "25000"
     UDPport = std::stoi(portStr);
-    
+
 	executeRtspRequest();
 }
 
@@ -205,19 +205,20 @@ void ServerWorker::sendRtp(){
 }
 // Reply to RTSP request and get udp port for RTP
 
-void ServerWorker::replyRtsp(std::string str)
+void ServerWorker::replyRtsp(std::string stateResponse)
 {
     // Tạo response đơn giản
     std::stringstream response;
 
-    response << "RTSP/1.0 200 OK\r\n";
+    response << "RTSP/1.0 " << stateResponse << "\r\n";
     response << "CSeq: " << cseq << "\r\n";
     response << "Session: " << sessionId << "\r\n\r\n";
 
     std::string resp = response.str();
-
-    send(clientSocket, resp.c_str(), resp.length(), 0);
-
+    int iResult = send(clientSocket, resp.c_str(), resp.length(), 0);
+    if (iResult == SOCKET_ERROR)
+    {
+        std::cerr << "Send RTSP response failed! Error: " << WSAGetLastError() << "\n";
+    }
     std::cout << "Sent RTSP response:\n" << resp << "\n";
-    
 }
