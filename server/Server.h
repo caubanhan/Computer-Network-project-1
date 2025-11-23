@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <iostream>
+#include <memory>
 #include <string>
 
 // Need to link with Ws2_32.lib

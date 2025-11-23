@@ -65,7 +65,7 @@ bool Server::init(int port)
 // Need WSACleanup() when init = false
 bool Server::startListening()
 {
-    int iResult = SOCKET_ERROR;
+    int iResult = SOCKET_ERROR; // have fixed
     iResult = listen(listenSock, SOMAXCONN);
     if (iResult == SOCKET_ERROR)
     {
