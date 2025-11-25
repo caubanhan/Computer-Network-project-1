@@ -65,7 +65,7 @@ private:
 
     // Các hàm nội bộ
     void connectToServer();
-    void sendRtspRequest(string method);
+    bool sendRtspRequest(string method);
     void listenRtp(); // Hàm chạy trong thread riêng
-    void handleServerReply();
+    bool handleServerReply();
 };

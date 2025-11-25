@@ -48,7 +48,7 @@ void Client::connectToServer() {
 }
 
 // --- Gửi lệnh RTSP ---
-void Client::sendRtspRequest(string method) {
+bool Client::sendRtspRequest(string method) {
     if (rtspSocket == INVALID_SOCKET) return;
 
     string msg = method + " " + fileName + " RTSP/1.0\r\n";
@@ -65,50 +65,69 @@ void Client::sendRtspRequest(string method) {
     send(rtspSocket, msg.c_str(), (int)msg.length(), 0);
     cout << "[SENT]: " << method << endl;
 
-    handleServerReply();
+    return handleServerReply();
 }
 
 // --- Xử lý phản hồi từ Server ---
-void Client::handleServerReply() {
+bool Client::handleServerReply() {
     char buffer[1024] = { 0 };
     int len = recv(rtspSocket, buffer, 1024, 0);
     if (len > 0) {
         string reply(buffer);
         cout << "Server Reply:\n" << reply << endl; // Debug
 
-        // Parse Session ID nếu là SETUP
+		if (reply.find("200 OK") == string::npos) { // Không có 200 OK thì hủy
+            cout << "Error:\n" << reply << endl;
+            return false; 
+        }
+
         if (reply.find("Session:") != string::npos && sessionId == 0) {
             size_t pos = reply.find("Session: ");
             string sub = reply.substr(pos + 9);
             sessionId = stoi(sub.substr(0, sub.find("\n")));
+
+            cout << "--> Connection Established! Session ID: " << sessionId << endl;
+			return true; // Thành công khi nhận được Session ID
         }
     }
+	return false; // Mặc định trả về false nếu không nhận được phản hồi đúng
 }
 
 // --- Các hàm Button Handlers ---
 void Client::setup() {
     if (state == INIT) {
-        sendRtspRequest("SETUP");
-        state = READY;
-        cout << "System READY. Press 'p' to Play." << endl;
+        if (sendRtspRequest("SETUP")) {
+            state = READY;
+            cout << "System READY. Press 'p' to Play." << endl;
+        } else {
+            cout << "SETUP Failed!" << endl;
+        }
     }
 }
 
 void Client::play() {
     if (state == READY) {
-        sendRtspRequest("PLAY");
-        state = PLAYING;
-        // Bắt đầu luồng nhận RTP nếu chưa chạy
-        if (!rtpThread.joinable()) {
-            rtpThread = thread(&Client::listenRtp, this);
+        if (sendRtspRequest("PLAY")) {
+            state = PLAYING;
+            // Bắt đầu luồng nhận RTP nếu chưa chạy
+            if (!rtpThread.joinable()) {
+                rtpThread = thread(&Client::listenRtp, this);
+            }
+        }
+        else {
+            cout << "PLAY Failed!" << endl;
         }
     }
 }
 
 void Client::pause() {
     if (state == PLAYING) {
-        sendRtspRequest("PAUSE");
-        state = READY;
+        if (sendRtspRequest("PAUSE")) {
+            state = READY;
+        }
+        else {
+			cout << "PAUSE Failed!" << endl;
+        }
     }
 }
 
@@ -152,6 +171,7 @@ void Client::listenRtp() {
                 if (seq > frameNum) { // Bỏ qua gói tin cũ
                     frameNum = seq;
 
+                    // Đoạn decode này có thể sẽ fix
                     // Decode ảnh bằng OpenCV (Payload bắt đầu từ byte 12)
                     // Tương đương hàm updateMovie trong Python
                     cv::Mat rawData(1, len - 12, CV_8UC1, buffer + 12);
