@@ -25,11 +25,12 @@ void RtpPacket::beginFrame(const uint8_t* frameData, int frameSize)
     offset = 0;
 
     // Update timestamp per frame (example: +3600)
-    timestamp += 3600;
+    timestamp += TIMESTAMP_INCREMENT;
 
     // Prepare RTP header
     header[0] = (2 << 6);  // Version 2
-    header[1] = 96;        // Payload type 96 (dynamic)
+    header[1] = 26;        // Payload type 96 (dynamic)
+                           // Payload type 26 for JPEG (static)
 }
 
 bool RtpPacket::getNextPacket(uint8_t* outBuffer, int& outSize)
@@ -51,6 +52,7 @@ bool RtpPacket::getNextPacket(uint8_t* outBuffer, int& outSize)
     // Copy header bytes
     std::memcpy(outBuffer, header, 12);
 
+    // use & 0xFF to ensure only the last 8 bits are taken
     // Set sequence number
     outBuffer[2] = (seq >> 8) & 0xFF;
     outBuffer[3] = seq & 0xFF;
