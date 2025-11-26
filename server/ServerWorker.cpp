@@ -170,7 +170,7 @@ void ServerWorker::sendRtp(){
 
     // 3. Send all RTP packets of this frame
     uint8_t packetBuf[1500];
-    int packetSize;
+    int packetSize = 0;     // set mac dinh = 0 ==> Tranh undefined behavior
     while (rtpPacket.getNextPacket(packetBuf, packetSize) && sending.load()) {
         // Basic validation
         if (packetSize <= 0 || packetSize > static_cast<int>(sizeof(packetBuf))) {
