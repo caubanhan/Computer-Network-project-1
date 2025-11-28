@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <iostream>
 #include <string>
+#include <vector>
 #include <thread>
 #include <atomic>
 #include <winsock2.h>
@@ -12,6 +13,7 @@
 using namespace std;
 
 // Cấu trúc gói tin RTP (để parse header)
+#pragma pack(push, 1)
 struct RtpHeader {
 	uint8_t csrc_count : 4; // CSRC (CSRC) count
     uint8_t extension : 1;
@@ -23,6 +25,7 @@ struct RtpHeader {
     uint32_t timestamp;
     uint32_t ssrc;
 };
+#pragma pack(pop)
 
 class Client {
 public:
@@ -63,6 +66,7 @@ private:
     // Thread
     thread rtpThread;
 
+    std::vector<uint8_t> frameBuffer;
     // Các hàm nội bộ
     void connectToServer();
     bool sendRtspRequest(string method);

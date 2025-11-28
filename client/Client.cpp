@@ -36,7 +36,7 @@ void Client::connectToServer() {
     rtspSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     sockaddr_in addr;
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = inet_addr(serverAddr.c_str());
+    inet_pton(AF_INET, serverAddr.c_str(), &addr.sin_addr);
     addr.sin_port = htons(serverPort);
 
     if (connect(rtspSocket, (SOCKADDR*)&addr, sizeof(addr)) == SOCKET_ERROR) {
@@ -49,7 +49,7 @@ void Client::connectToServer() {
 
 // --- Gửi lệnh RTSP ---
 bool Client::sendRtspRequest(string method) {
-    if (rtspSocket == INVALID_SOCKET) return;
+    if (rtspSocket == INVALID_SOCKET) return false;
 
     string msg = method + " " + fileName + " RTSP/1.0\r\n";
     msg += "CSeq: " + to_string(rtspSeq++) + "\r\n";
@@ -84,11 +84,13 @@ bool Client::handleServerReply() {
         if (reply.find("Session:") != string::npos && sessionId == 0) {
             size_t pos = reply.find("Session: ");
             string sub = reply.substr(pos + 9);
-            sessionId = stoi(sub.substr(0, sub.find("\n")));
+            size_t endPos = sub.find_first_of("\r\n;");
+            sessionId = stoi(sub.substr(0, endPos));
 
             cout << "--> Connection Established! Session ID: " << sessionId << endl;
 			return true; // Thành công khi nhận được Session ID
         }
+		return true; // Thành công với các lệnh khác
     }
 	return false; // Mặc định trả về false nếu không nhận được phản hồi đúng
 }
@@ -142,46 +144,80 @@ void Client::teardown() {
 void Client::listenRtp() {
     rtpSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
-    // Set timeout để thread không bị treo mãi mãi
     DWORD timeout = 500;
     setsockopt(rtpSocket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
+
+    // Tăng kích thước buffer nhận của Socket lên (quan trọng để không bị drop gói)
+    int buffSize = 65536;
+    setsockopt(rtpSocket, SOL_SOCKET, SO_RCVBUF, (const char*)&buffSize, sizeof(buffSize));
 
     sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_port = htons(rtpPort);
 
-    bind(rtpSocket, (SOCKADDR*)&addr, sizeof(addr));
+    if (::bind(rtpSocket, (SOCKADDR*)&addr, sizeof(addr)) == SOCKET_ERROR) {
+        cout << "Bind RTP failed: " << WSAGetLastError() << endl;
+        return;
+    }
 
-    char buffer[20480]; // 20KB Buffer
+    char buffer[2048]; // Buffer nhận gói tin thô (thường chỉ tầm 1400 byte)
 
+    int totalPackets = 0; //debug
     while (isRunning) {
         if (state != PLAYING) {
-            this_thread::sleep_for(chrono::milliseconds(100));
+            this_thread::sleep_for(chrono::milliseconds(10));
             continue;
         }
 
         int len = recv(rtpSocket, buffer, sizeof(buffer), 0);
-        if (len > 0) {
-            // Parse Header (12 bytes)
-            if (len > 12) {
-                RtpHeader* header = (RtpHeader*)buffer;
-                uint16_t seq = ntohs(header->sequence_number);
+        if (len > 0) { //debug
+            totalPackets++;
+            if (totalPackets % 100 == 0) cout << "Da nhan " << totalPackets << " goi tin..." << endl;
+        }
+        else {
+            // Không nhận được gì hoặc timeout
+            continue;
+        }
+        if (len > 12) { // Phải lớn hơn Header 12 byte
 
-                if (seq > frameNum) { // Bỏ qua gói tin cũ
-                    frameNum = seq;
+            // 1. Lấy thông tin Header
+            RtpHeader* header = (RtpHeader*)buffer;
 
-                    // Đoạn decode này có thể sẽ fix
-                    // Decode ảnh bằng OpenCV (Payload bắt đầu từ byte 12)
-                    // Tương đương hàm updateMovie trong Python
-                    cv::Mat rawData(1, len - 12, CV_8UC1, buffer + 12);
-                    cv::Mat frame = cv::imdecode(rawData, cv::IMREAD_COLOR);
+            // 2. Gom dữ liệu (Payload) vào bộ đệm chung
+            // Payload bắt đầu từ byte thứ 12
+            uint8_t* payload = (uint8_t*)buffer + 12;
+            int payloadSize = len - 12;
 
-                    if (!frame.empty()) {
-                        cv::imshow("RTPClient Video", frame);
-                        cv::waitKey(1); // Cập nhật GUI
+            frameBuffer.insert(frameBuffer.end(), payload, payload + payloadSize);
+
+            // 3. Kiểm tra Marker Bit
+            // Nếu dùng struct bit-field đôi khi không chính xác do compiler, 
+            // cách chắc chắn nhất là check bit 1 của byte thứ 2 (0x80)
+            // Trong buffer: buffer[1] chứa Marker (bit đầu) và PayloadType (7 bit sau)
+            bool isLastPacket = (buffer[1] & 0x80) != 0;
+
+            if (isLastPacket) {
+                // Đã nhận đủ 1 Frame -> Decode
+                cout << "[DEBUG] Da ghep duoc 1 Frame. Kich thuoc: " << frameBuffer.size() << " bytes.";
+                // Decode từ memory buffer
+                cv::Mat rawData(frameBuffer);
+                cv::Mat frame = cv::imdecode(rawData, cv::IMREAD_COLOR);
+
+                if (!frame.empty()) {
+                    cout << " -> DECODE THANH CONG! (Hien thi anh)" << endl;
+                    cv::imshow("Client Video", frame);
+                    cv::waitKey(1); // Bắt buộc có để vẽ hình
+                }
+                else {
+                    cout << "Decode failed (Frame incomplete?)\n";
+                    if (frameBuffer.size() > 2) {
+                        printf("Dau header la: %02X %02X\n", frameBuffer[0], frameBuffer[1]);
                     }
                 }
+
+                // Xóa buffer để chuẩn bị cho frame tiếp theo
+                frameBuffer.clear();
             }
         }
     }
