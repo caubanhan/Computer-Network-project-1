@@ -18,6 +18,7 @@ This repository contains a networked server and a client implementation built wi
 - Ninja build system
 - Visual Studio 2022 (recommended) or another modern C++ toolchain
 - C++17-compatible compiler
+- Compiler GCC MinGW64 (15.2.0 recommeneded)
 
 ## Build (Command Line)
 Recommended workflow (from repository root):
