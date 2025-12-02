@@ -5,7 +5,7 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-#define DEFAULT_PORT 554
+#define DEFAULT_PORT 8554
 
 int main()
 {

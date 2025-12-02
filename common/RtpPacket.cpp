@@ -1,4 +1,4 @@
-#include <winsock2.h>
+﻿#include <winsock2.h>
 #include <ws2tcpip.h>
 
 #pragma comment(lib, "ws2_32.lib")
@@ -42,6 +42,7 @@ bool RtpPacket::getNextPacket(uint8_t* outBuffer, int& outSize)
 
     // Compute packet payload size
     int remaining = payload.size() - offset;
+    bool isLastPacket = (remaining <= MAX_RTP_PAYLOAD);
     int packetPayload = remaining > MAX_RTP_PAYLOAD ? MAX_RTP_PAYLOAD : remaining;
 
     // Build RTP header
@@ -51,6 +52,13 @@ bool RtpPacket::getNextPacket(uint8_t* outBuffer, int& outSize)
 
     // Copy header bytes
     std::memcpy(outBuffer, header, 12);
+
+    if (isLastPacket) {
+        outBuffer[1] |= 0x80; // Marker = 1
+    }
+    else {
+        outBuffer[1] &= 0x7F; // Marker = 0
+    }
 
     // use & 0xFF to ensure only the last 8 bits are taken
     // Set sequence number
