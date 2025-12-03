@@ -1,6 +1,8 @@
 ﻿#include "Client.h"
 #include <conio.h> // Để dùng _getch() bắt phím
 
+#define STB_IMAGE_IMPLEMENTATION
+
 // --- Constructor ---
 Client::Client(string serverAddr, int serverPort, int rtpPort, string fileName) {
     this->serverAddr = serverAddr;
@@ -165,61 +167,61 @@ void Client::listenRtp() {
 
     int totalPackets = 0; //debug
     while (isRunning) {
-        if (state != PLAYING) {
-            this_thread::sleep_for(chrono::milliseconds(10));
-            continue;
-        }
+    //    if (state != PLAYING) {
+    //        this_thread::sleep_for(chrono::milliseconds(10));
+    //        continue;
+    //    }
 
-        int len = recv(rtpSocket, buffer, sizeof(buffer), 0);
-        if (len > 0) { //debug
-            totalPackets++;
-            if (totalPackets % 100 == 0) cout << "Da nhan " << totalPackets << " goi tin..." << endl;
-        }
-        else {
-            // Không nhận được gì hoặc timeout
-            continue;
-        }
-        if (len > 12) { // Phải lớn hơn Header 12 byte
+    //    int len = recv(rtpSocket, buffer, sizeof(buffer), 0);
+    //    if (len > 0) { //debug
+    //        totalPackets++;
+    //        if (totalPackets % 100 == 0) cout << "Da nhan " << totalPackets << " goi tin..." << endl;
+    //    }
+    //    else {
+    //        // Không nhận được gì hoặc timeout
+    //        continue;
+    //    }
+    //    if (len > 12) { // Phải lớn hơn Header 12 byte
 
-            // 1. Lấy thông tin Header
-            RtpHeader* header = (RtpHeader*)buffer;
+    //        // 1. Lấy thông tin Header
+    //        RtpHeader* header = (RtpHeader*)buffer;
 
-            // 2. Gom dữ liệu (Payload) vào bộ đệm chung
-            // Payload bắt đầu từ byte thứ 12
-            uint8_t* payload = (uint8_t*)buffer + 12;
-            int payloadSize = len - 12;
+    //        // 2. Gom dữ liệu (Payload) vào bộ đệm chung
+    //        // Payload bắt đầu từ byte thứ 12
+    //        uint8_t* payload = (uint8_t*)buffer + 12;
+    //        int payloadSize = len - 12;
 
-            frameBuffer.insert(frameBuffer.end(), payload, payload + payloadSize);
+    //        frameBuffer.insert(frameBuffer.end(), payload, payload + payloadSize);
 
-            // 3. Kiểm tra Marker Bit
-            // Nếu dùng struct bit-field đôi khi không chính xác do compiler, 
-            // cách chắc chắn nhất là check bit 1 của byte thứ 2 (0x80)
-            // Trong buffer: buffer[1] chứa Marker (bit đầu) và PayloadType (7 bit sau)
-            bool isLastPacket = (buffer[1] & 0x80) != 0;
+    //        // 3. Kiểm tra Marker Bit
+    //        // Nếu dùng struct bit-field đôi khi không chính xác do compiler, 
+    //        // cách chắc chắn nhất là check bit 1 của byte thứ 2 (0x80)
+    //        // Trong buffer: buffer[1] chứa Marker (bit đầu) và PayloadType (7 bit sau)
+    //        bool isLastPacket = (buffer[1] & 0x80) != 0;
 
-            if (isLastPacket) {
-                // Đã nhận đủ 1 Frame -> Decode
-                cout << "[DEBUG] Da ghep duoc 1 Frame. Kich thuoc: " << frameBuffer.size() << " bytes.";
-                // Decode từ memory buffer
-                cv::Mat rawData(frameBuffer);
-                cv::Mat frame = cv::imdecode(rawData, cv::IMREAD_COLOR);
+    //        if (isLastPacket) {
+    //            // Đã nhận đủ 1 Frame -> Decode
+    //            cout << "[DEBUG] Da ghep duoc 1 Frame. Kich thuoc: " << frameBuffer.size() << " bytes.";
+    //            // Decode từ memory buffer
+    //            cv::Mat rawData(frameBuffer);
+    //            cv::Mat frame = cv::imdecode(rawData, cv::IMREAD_COLOR);
 
-                if (!frame.empty()) {
-                    cout << " -> DECODE THANH CONG! (Hien thi anh)" << endl;
-                    cv::imshow("Client Video", frame);
-                    cv::waitKey(1); // Bắt buộc có để vẽ hình
-                }
-                else {
-                    cout << "Decode failed (Frame incomplete?)\n";
-                    if (frameBuffer.size() > 2) {
-                        printf("Dau header la: %02X %02X\n", frameBuffer[0], frameBuffer[1]);
-                    }
-                }
+    //            if (!frame.empty()) {
+    //                cout << " -> DECODE THANH CONG! (Hien thi anh)" << endl;
+    //                cv::imshow("Client Video", frame);
+    //                cv::waitKey(1); // Bắt buộc có để vẽ hình
+    //            }
+    //            else {
+    //                cout << "Decode failed (Frame incomplete?)\n";
+    //                if (frameBuffer.size() > 2) {
+    //                    printf("Dau header la: %02X %02X\n", frameBuffer[0], frameBuffer[1]);
+    //                }
+    //            }
 
-                // Xóa buffer để chuẩn bị cho frame tiếp theo
-                frameBuffer.clear();
-            }
-        }
+    //            // Xóa buffer để chuẩn bị cho frame tiếp theo
+    //            frameBuffer.clear();
+    //        }
+    //    }
     }
     closesocket(rtpSocket);
 }

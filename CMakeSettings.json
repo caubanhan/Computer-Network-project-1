@@ -14,7 +14,7 @@
       "variables": [ //Open CV
         {
           "name": "OpenCV_DIR",
-          "value": "D:/Window's Things/New folder/opencv", //Path to Open CV build folder (tự cài đặt)
+          "value": "", //Path to Open CV build folder (tự cài đặt)
           "type": "PATH"
         }
       ]
