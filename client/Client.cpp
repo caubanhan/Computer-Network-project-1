@@ -1,246 +1,188 @@
-﻿#include "Client.h"
-#include <conio.h> // Để dùng _getch() bắt phím
+﻿#define STB_IMAGE_IMPLEMENTATION
+#include "Client.h"
+#include <iostream>
+#include <sstream>
+#include <fstream>
 
-// --- Constructor ---
-Client::Client(string serverAddr, int serverPort, int rtpPort, string fileName) {
-    this->serverAddr = serverAddr;
-    this->serverPort = serverPort;
-    this->rtpPort = rtpPort;
-    this->fileName = fileName;
+#pragma comment(lib, "ws2_32.lib")
 
-    this->state = INIT;
-    this->rtspSeq = 1;
-    this->sessionId = 0;
-    this->frameNum = 0;
-    this->isRunning = true;
-    this->rtspSocket = INVALID_SOCKET;
-    this->rtpSocket = INVALID_SOCKET;
-
-    // Khởi tạo Winsock
-    WSADATA wsaData;
-    WSAStartup(MAKEWORD(2, 2), &wsaData);
-
-    connectToServer();
+Client::Client(const std::string& serverAddr_, int rtspPort_, int rtpListenPort_, const std::string& fileName_)
+    : serverAddr(serverAddr_), rtspPort(rtspPort_), rtpPort(rtpListenPort_), fileName(fileName_),
+      rtspSocket(INVALID_SOCKET), cseq(1), sessionID(""),
+      rtpReceiver(nullptr), workerRunning(false),
+      latestW(0), latestH(0), frameAvailable(false),
+      state(INIT), playSeconds(0)
+{
+    // Initialize Winsock if not done elsewhere
+    WSADATA wsa;
+    WSAStartup(MAKEWORD(2, 2), &wsa);
 }
 
-// --- Destructor ---
 Client::~Client() {
-    isRunning = false;
-	if (rtpThread.joinable()) rtpThread.join(); // Chờ thread RTP kết thúc
-    if (rtspSocket != INVALID_SOCKET) closesocket(rtspSocket);
+    teardown();
     WSACleanup();
 }
 
-// --- Kết nối TCP tới Server (RTSP) ---
-void Client::connectToServer() {
-    rtspSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    inet_pton(AF_INET, serverAddr.c_str(), &addr.sin_addr);
-    addr.sin_port = htons(serverPort);
-
-    if (connect(rtspSocket, (SOCKADDR*)&addr, sizeof(addr)) == SOCKET_ERROR) {
-        cout << "Connection Failed!" << endl;
-    }
-    else {
-        cout << "Connected to Server at " << serverAddr << ":" << serverPort << endl;
-    }
-}
-
-// --- Gửi lệnh RTSP ---
-bool Client::sendRtspRequest(string method) {
+bool Client::sendRtspRequest(const std::string& method) {
     if (rtspSocket == INVALID_SOCKET) return false;
 
-    string msg = method + " " + fileName + " RTSP/1.0\r\n";
-    msg += "CSeq: " + to_string(rtspSeq++) + "\r\n";
-
+    std::stringstream ss;
+    ss << method << " " << fileName << " RTSP/1.0\r\n";
+    ss << "CSeq: " << cseq++ << "\r\n";
+    
+    // SETUP requires Transport header
     if (method == "SETUP") {
-        msg += "Transport: RTP/UDP; client_port= " + to_string(rtpPort) + "\r\n";
+        ss << "Transport: RTP/UDP; client_port=" << rtpPort << "\r\n";
     }
-    else {
-        msg += "Session: " + to_string(sessionId) + "\r\n";
+    // Others require Session if we have it
+    else if (!sessionID.empty()) {
+        ss << "Session: " << sessionID << "\r\n";
     }
-    msg += "\r\n";
+    
+    ss << "\r\n"; // End of header
 
-    send(rtspSocket, msg.c_str(), (int)msg.length(), 0);
-    cout << "[SENT]: " << method << endl;
+    std::string request = ss.str();
+    send(rtspSocket, request.c_str(), request.size(), 0);
+    std::cout << "[RTSP Request]\n" << request << "\n";
 
-    return handleServerReply();
-}
+    // Read Response
+    char buf[4096] = {0};
+    int bytes = recv(rtspSocket, buf, 4096, 0);
+    if (bytes > 0) {
+        std::string response(buf, bytes);
+        std::cout << "[RTSP Response]\n" << response << "\n";
 
-// --- Xử lý phản hồi từ Server ---
-bool Client::handleServerReply() {
-    char buffer[1024] = { 0 };
-    int len = recv(rtspSocket, buffer, 1024, 0);
-    if (len > 0) {
-        string reply(buffer);
-        cout << "Server Reply:\n" << reply << endl; // Debug
-
-		if (reply.find("200 OK") == string::npos) { // Không có 200 OK thì hủy
-            cout << "Error:\n" << reply << endl;
-            return false; 
-        }
-
-        if (reply.find("Session:") != string::npos && sessionId == 0) {
-            size_t pos = reply.find("Session: ");
-            string sub = reply.substr(pos + 9);
-            size_t endPos = sub.find_first_of("\r\n;");
-            sessionId = stoi(sub.substr(0, endPos));
-
-            cout << "--> Connection Established! Session ID: " << sessionId << endl;
-			return true; // Thành công khi nhận được Session ID
-        }
-		return true; // Thành công với các lệnh khác
-    }
-	return false; // Mặc định trả về false nếu không nhận được phản hồi đúng
-}
-
-// --- Các hàm Button Handlers ---
-void Client::setup() {
-    if (state == INIT) {
-        if (sendRtspRequest("SETUP")) {
-            state = READY;
-            cout << "System READY. Press 'p' to Play." << endl;
-        } else {
-            cout << "SETUP Failed!" << endl;
-        }
-    }
-}
-
-void Client::play() {
-    if (state == READY) {
-        if (sendRtspRequest("PLAY")) {
-            state = PLAYING;
-            // Bắt đầu luồng nhận RTP nếu chưa chạy
-            if (!rtpThread.joinable()) {
-                rtpThread = thread(&Client::listenRtp, this);
+        // Simple parse for Session ID
+        if (method == "SETUP") {
+            size_t pos = response.find("Session: ");
+            if (pos != std::string::npos) {
+                sessionID = response.substr(pos + 9);
+                // Trim newline
+                sessionID = sessionID.substr(0, sessionID.find_first_of("\r\n"));
             }
         }
-        else {
-            cout << "PLAY Failed!" << endl;
-        }
+        return response.find("200 OK") != std::string::npos;
     }
+    return false;
 }
 
-void Client::pause() {
-    if (state == PLAYING) {
-        if (sendRtspRequest("PAUSE")) {
-            state = READY;
-        }
-        else {
-			cout << "PAUSE Failed!" << endl;
-        }
-    }
-}
+bool Client::setup() {
+    std::ofstream logFile("client_log.txt", std::ios::app);
+    if (state.load() != INIT) return false;
 
-void Client::teardown() {
-    sendRtspRequest("TEARDOWN");
-    state = INIT;
-    isRunning = false;
-    exit(0); // Thoát chương trình
-}
+    // 1. Create RTSP TCP Socket
+    rtspSocket = socket(AF_INET, SOCK_STREAM, 0);
+    sockaddr_in server{};
+    server.sin_family = AF_INET;
+    server.sin_port = htons(rtspPort);
+    server.sin_addr.s_addr = inet_addr(serverAddr.c_str());
 
-// --- RTP Listener Thread (Xử lý nhận & hiển thị Video) ---
-void Client::listenRtp() {
-    rtpSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-
-    DWORD timeout = 500;
-    setsockopt(rtpSocket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
-
-    // Tăng kích thước buffer nhận của Socket lên (quan trọng để không bị drop gói)
-    int buffSize = 65536;
-    setsockopt(rtpSocket, SOL_SOCKET, SO_RCVBUF, (const char*)&buffSize, sizeof(buffSize));
-
-    sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = INADDR_ANY;
-    addr.sin_port = htons(rtpPort);
-
-    if (::bind(rtpSocket, (SOCKADDR*)&addr, sizeof(addr)) == SOCKET_ERROR) {
-        cout << "Bind RTP failed: " << WSAGetLastError() << endl;
-        return;
+    if (connect(rtspSocket, (sockaddr*)&server, sizeof(server)) < 0) {
+        logFile << "Failed to connect to RTSP Server\n";
+        return false;
     }
 
-    char buffer[2048]; // Buffer nhận gói tin thô (thường chỉ tầm 1400 byte)
+    // 2. Prepare RTP Receiver (UDP)
+    try {
+        rtpReceiver = std::make_unique<RtpReceiver>(rtpPort);
+    } catch (...) { return false; }
 
-    int totalPackets = 0; //debug
-    while (isRunning) {
-        if (state != PLAYING) {
-            this_thread::sleep_for(chrono::milliseconds(10));
-            continue;
-        }
+    // 3. Send SETUP
+    if (sendRtspRequest("SETUP")) {
+        state.store(READY);
+        return true;
+    }
+    logFile.close();
+    return false;
+}
 
-        int len = recv(rtpSocket, buffer, sizeof(buffer), 0);
-        if (len > 0) { //debug
-            totalPackets++;
-            if (totalPackets % 100 == 0) cout << "Da nhan " << totalPackets << " goi tin..." << endl;
-        }
-        else {
-            // Không nhận được gì hoặc timeout
-            continue;
-        }
-        if (len > 12) { // Phải lớn hơn Header 12 byte
+bool Client::play() {
+    if (state.load() != READY) return false;
 
-            // 1. Lấy thông tin Header
-            RtpHeader* header = (RtpHeader*)buffer;
+    if (sendRtspRequest("PLAY")) {
+        workerRunning.store(true);
+        playSeconds.store(0);
+        workerThread = std::thread(&Client::receiveLoop, this);
+        state.store(PLAYING);
+        return true;
+    }
+    return false;
+}
 
-            // 2. Gom dữ liệu (Payload) vào bộ đệm chung
-            // Payload bắt đầu từ byte thứ 12
-            uint8_t* payload = (uint8_t*)buffer + 12;
-            int payloadSize = len - 12;
+bool Client::pause() {
+    if (state.load() != PLAYING) return false;
 
-            frameBuffer.insert(frameBuffer.end(), payload, payload + payloadSize);
+    if (sendRtspRequest("PAUSE")) {
+        workerRunning.store(false);
+        if (workerThread.joinable()) workerThread.join();
+        state.store(READY);
+        return true;
+    }
+    return false;
+}
 
-            // 3. Kiểm tra Marker Bit
-            // Nếu dùng struct bit-field đôi khi không chính xác do compiler, 
-            // cách chắc chắn nhất là check bit 1 của byte thứ 2 (0x80)
-            // Trong buffer: buffer[1] chứa Marker (bit đầu) và PayloadType (7 bit sau)
-            bool isLastPacket = (buffer[1] & 0x80) != 0;
+bool Client::teardown() {
+    sendRtspRequest("TEARDOWN"); // Try to send, even if state is mess
 
-            if (isLastPacket) {
-                // Đã nhận đủ 1 Frame -> Decode
-                cout << "[DEBUG] Da ghep duoc 1 Frame. Kich thuoc: " << frameBuffer.size() << " bytes.";
-                // Decode từ memory buffer
-                cv::Mat rawData(frameBuffer);
-                cv::Mat frame = cv::imdecode(rawData, cv::IMREAD_COLOR);
+    workerRunning.store(false);
+    if (workerThread.joinable()) workerThread.join();
+    
+    if (rtpReceiver) rtpReceiver.reset();
+    
+    if (rtspSocket != INVALID_SOCKET) {
+        closesocket(rtspSocket);
+        rtspSocket = INVALID_SOCKET;
+    }
 
-                if (!frame.empty()) {
-                    cout << " -> DECODE THANH CONG! (Hien thi anh)" << endl;
-                    cv::imshow("Client Video", frame);
-                    cv::waitKey(1); // Bắt buộc có để vẽ hình
-                }
-                else {
-                    cout << "Decode failed (Frame incomplete?)\n";
-                    if (frameBuffer.size() > 2) {
-                        printf("Dau header la: %02X %02X\n", frameBuffer[0], frameBuffer[1]);
-                    }
-                }
+    state.store(INIT);
+    cseq = 1;
+    sessionID = "";
+    return true;
+}
 
-                // Xóa buffer để chuẩn bị cho frame tiếp theo
-                frameBuffer.clear();
+// ... receiveLoop and getLatestFrame remain mostly the same ...
+// Copy your existing receiveLoop and getLatestFrame here.
+// IMPORTANT: In getLatestFrame, use your existing code.
+void Client::receiveLoop()
+{
+    // ... (Use the content you provided in your original file) ... 
+    // Just make sure to include the logic I provided originally or your own.
+    // The key is calling rtpReceiver->getFrame and MjpegDecoder::decode
+    using clock = std::chrono::steady_clock;
+    auto lastSecond = clock::now();
+    std::vector<uint8_t> jpegBuf;
+    
+    while (workerRunning.load()) {
+        jpegBuf.clear();
+        if (rtpReceiver->getFrame(jpegBuf)) {
+            std::vector<uint8_t> rgb;
+            int w=0, h=0;
+            if (MjpegDecoder::decode(jpegBuf, rgb, w, h)) {
+                std::lock_guard<std::mutex> lk(latestMutex);
+                latestRgb.swap(rgb);
+                latestW = w;
+                latestH = h;
+                frameAvailable.store(true);
             }
         }
+        // Time keeping
+        auto now = clock::now();
+        if (now - lastSecond >= std::chrono::seconds(1)) {
+            if (state.load() == PLAYING) playSeconds.fetch_add(1);
+            lastSecond = now;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
-    closesocket(rtpSocket);
 }
 
-// --- Giao diện điều khiển (Giả lập GUI Mainloop) ---
-void Client::runInterface() {
-    cout << "\n========================================" << endl;
-    cout << "          RTP CLIENT CONTROLLER         " << endl;
-    cout << "========================================" << endl;
-    cout << "Controls: [s] Setup, [p] Play, [u] Pause, [t] Teardown" << endl;
-
-    while (isRunning) {
-        if (_kbhit()) { // Nếu có phím nhấn
-            char key = _getch();
-            switch (key) {
-            case 's': setup(); break;
-            case 'p': play(); break;
-            case 'u': pause(); break;
-            case 't': teardown(); break;
-            }
-        }
-        this_thread::sleep_for(chrono::milliseconds(50));
-    }
+bool Client::getLatestFrame(std::vector<uint8_t>& outRgb, int& outW, int& outH)
+{
+    if (!frameAvailable.load()) return false;
+    std::lock_guard<std::mutex> lk(latestMutex);
+    if (latestRgb.empty()) return false;
+    outRgb = latestRgb;
+    outW = latestW;
+    outH = latestH;
+    frameAvailable.store(false);
+    return true;
 }

@@ -1,75 +1,59 @@
 ﻿#pragma once
-#include <iostream>
 #include <string>
 #include <vector>
-#include <thread>
+#include <mutex>
 #include <atomic>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <opencv2/opencv.hpp>
+#include <thread>
+#include <winsock2.h> // Needed for RTSP TCP Socket
 
-#pragma comment(lib, "ws2_32.lib")
-
-using namespace std;
-
-// Cấu trúc gói tin RTP (để parse header)
-#pragma pack(push, 1)
-struct RtpHeader {
-	uint8_t csrc_count : 4; // CSRC (CSRC) count
-    uint8_t extension : 1;
-    uint8_t padding : 1;
-	uint8_t version : 2; // RTP version
-    uint8_t payload_type : 7;
-	uint8_t marker : 1; // Kết thúc frame
-    uint16_t sequence_number;
-    uint32_t timestamp;
-    uint32_t ssrc;
-};
-#pragma pack(pop)
+#include "RtpReceiver.h"
+#include "MjpegDecoder.h"
 
 class Client {
 public:
-    // Trạng thái
-    enum State { INIT, READY, PLAYING };
+    enum State { INIT = 0, READY, PLAYING };
 
-    // Constructor & Destructor
-    Client(string serverAddr, int serverPort, int rtpPort, string fileName);
+    Client(const std::string& serverAddr, int rtspPort, int rtpListenPort, const std::string& fileName);
     ~Client();
 
-    // Các hàm điều khiển (tương ứng các nút bấm)
-    void setup();
-    void play();
-    void pause();
-    void teardown();
+    // RTSP Control
+    bool setup();
+    bool play();
+    bool pause();
+    bool teardown();
 
-    // Hàm chạy chính (thay cho root.mainloop)
-    void runInterface();
+    bool getLatestFrame(std::vector<uint8_t>& outRgb, int& outW, int& outH);
+    State getState() const { return state.load(); }
+    int getPlaySeconds() const { return playSeconds.load(); }
 
 private:
-    // Biến cấu hình
-    string serverAddr;
-    int serverPort;
+    void receiveLoop();
+    
+    // Helper for RTSP
+    bool sendRtspRequest(const std::string& method);
+
+private:
+    std::string serverAddr;
+    int rtspPort;
     int rtpPort;
-    string fileName;
+    std::string fileName;
 
-    // Biến trạng thái
-    atomic<State> state;
-    int rtspSeq;
-    int sessionId;
-    int frameNum;
-
-    // Socket
+    // RTSP Connection Variables
     SOCKET rtspSocket;
-    SOCKET rtpSocket;
-    atomic<bool> isRunning;
+    int cseq;           // Sequence number (increments per request)
+    std::string sessionID; 
 
-    // Thread
-    thread rtpThread;
+    std::unique_ptr<RtpReceiver> rtpReceiver;
+    std::thread workerThread;
+    std::atomic<bool> workerRunning;
 
-    std::vector<uint8_t> frameBuffer;
-    // Các hàm nội bộ
-    void connectToServer();
-    bool sendRtspRequest(string method);
-    void listenRtp(); // Hàm chạy trong thread riêng
-    bool handleServerReply();
+    // Decoding
+    std::vector<uint8_t> latestRgb;
+    int latestW;
+    int latestH;
+    std::mutex latestMutex;
+    std::atomic<bool> frameAvailable;
+
+    std::atomic<State> state;
+    std::atomic<int> playSeconds;
 };

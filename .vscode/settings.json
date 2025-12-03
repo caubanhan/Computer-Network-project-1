@@ -59,6 +59,10 @@
         "span": "cpp",
         "stop_token": "cpp",
         "text_encoding": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "condition_variable": "cpp",
+        "iomanip": "cpp",
+        "mutex": "cpp",
+        "cinttypes": "cpp"
     }
 }
