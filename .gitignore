@@ -12,8 +12,8 @@
 
 # Compiled binaries
 *.exe
-*.dll
-*.lib
+#*.dll
+#*.lib
 *.exp
 *.pdb
 *.ilk
