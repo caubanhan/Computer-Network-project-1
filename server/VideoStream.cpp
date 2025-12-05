@@ -61,6 +61,7 @@ int VideoStream::getNextFrame(uint8_t* frameBuf, int bufSize)
                 prevByte = byteRead;
             }
             return -1; // EOF before end marker
+            std::cout << "file is too large\n";
         }
         prev = cur;
     }

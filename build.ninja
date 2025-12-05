@@ -138,7 +138,7 @@ build cmake_object_order_depends_target_client_app: phony || cmake_object_order_
 build client/CMakeFiles/client_app.dir/ClientLauncher.cpp.obj: CXX_COMPILER__client_app_unscanned_ D$:/Projects/Computer-Network-project-1/client/ClientLauncher.cpp || cmake_object_order_depends_target_client_app
   DEP_FILE = client\CMakeFiles\client_app.dir\ClientLauncher.cpp.obj.d
   FLAGS = -std=gnu++17
-  INCLUDES = -ID:/Projects/Computer-Network-project-1/client/Dependencies/include -ID:/Projects/Computer-Network-project-1/common
+  INCLUDES = -ID:/Projects/Computer-Network-project-1/client/include -ID:/Projects/Computer-Network-project-1/common
   OBJECT_DIR = client\CMakeFiles\client_app.dir
   OBJECT_FILE_DIR = client\CMakeFiles\client_app.dir
   TARGET_SUPPORT_DIR = client\CMakeFiles\client_app.dir
@@ -146,7 +146,23 @@ build client/CMakeFiles/client_app.dir/ClientLauncher.cpp.obj: CXX_COMPILER__cli
 build client/CMakeFiles/client_app.dir/Client.cpp.obj: CXX_COMPILER__client_app_unscanned_ D$:/Projects/Computer-Network-project-1/client/Client.cpp || cmake_object_order_depends_target_client_app
   DEP_FILE = client\CMakeFiles\client_app.dir\Client.cpp.obj.d
   FLAGS = -std=gnu++17
-  INCLUDES = -ID:/Projects/Computer-Network-project-1/client/Dependencies/include -ID:/Projects/Computer-Network-project-1/common
+  INCLUDES = -ID:/Projects/Computer-Network-project-1/client/include -ID:/Projects/Computer-Network-project-1/common
+  OBJECT_DIR = client\CMakeFiles\client_app.dir
+  OBJECT_FILE_DIR = client\CMakeFiles\client_app.dir
+  TARGET_SUPPORT_DIR = client\CMakeFiles\client_app.dir
+
+build client/CMakeFiles/client_app.dir/RtpReceiver.cpp.obj: CXX_COMPILER__client_app_unscanned_ D$:/Projects/Computer-Network-project-1/client/RtpReceiver.cpp || cmake_object_order_depends_target_client_app
+  DEP_FILE = client\CMakeFiles\client_app.dir\RtpReceiver.cpp.obj.d
+  FLAGS = -std=gnu++17
+  INCLUDES = -ID:/Projects/Computer-Network-project-1/client/include -ID:/Projects/Computer-Network-project-1/common
+  OBJECT_DIR = client\CMakeFiles\client_app.dir
+  OBJECT_FILE_DIR = client\CMakeFiles\client_app.dir
+  TARGET_SUPPORT_DIR = client\CMakeFiles\client_app.dir
+
+build client/CMakeFiles/client_app.dir/VideoDisplay.cpp.obj: CXX_COMPILER__client_app_unscanned_ D$:/Projects/Computer-Network-project-1/client/VideoDisplay.cpp || cmake_object_order_depends_target_client_app
+  DEP_FILE = client\CMakeFiles\client_app.dir\VideoDisplay.cpp.obj.d
+  FLAGS = -std=gnu++17
+  INCLUDES = -ID:/Projects/Computer-Network-project-1/client/include -ID:/Projects/Computer-Network-project-1/common
   OBJECT_DIR = client\CMakeFiles\client_app.dir
   OBJECT_FILE_DIR = client\CMakeFiles\client_app.dir
   TARGET_SUPPORT_DIR = client\CMakeFiles\client_app.dir
@@ -159,11 +175,11 @@ build client/CMakeFiles/client_app.dir/Client.cpp.obj: CXX_COMPILER__client_app_
 #############################################
 # Link the executable client\client_app.exe
 
-build client/client_app.exe: CXX_EXECUTABLE_LINKER__client_app_ client/CMakeFiles/client_app.dir/ClientLauncher.cpp.obj client/CMakeFiles/client_app.dir/Client.cpp.obj | common/libcommon.a || common/libcommon.a
-  LINK_LIBRARIES = common/libcommon.a  -lws2_32  -lmingw32  -lSDL2main  -lSDL2  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
-  LINK_PATH = -LD:/Projects/Computer-Network-project-1/client/Dependencies/lib
+build client/client_app.exe: CXX_EXECUTABLE_LINKER__client_app_ client/CMakeFiles/client_app.dir/ClientLauncher.cpp.obj client/CMakeFiles/client_app.dir/Client.cpp.obj client/CMakeFiles/client_app.dir/RtpReceiver.cpp.obj client/CMakeFiles/client_app.dir/VideoDisplay.cpp.obj | common/libcommon.a || common/libcommon.a
+  LINK_LIBRARIES = common/libcommon.a  -lws2_32  -lmingw32  -lSDL2main  -lSDL2  -lSDL2_ttf  -static-libgcc  -static-libstdc++  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
+  LINK_PATH = -LD:/Projects/Computer-Network-project-1/client/lib
   OBJECT_DIR = client\CMakeFiles\client_app.dir
-  POST_BUILD = C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\Computer-Network-project-1\client && "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/Projects/Computer-Network-project-1/client/Dependencies/bin/SDL2.dll D:/Projects/Computer-Network-project-1/client"
+  POST_BUILD = C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\Computer-Network-project-1\client && "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/Projects/Computer-Network-project-1/client/SDL2.dll D:/Projects/Computer-Network-project-1/client && "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/Projects/Computer-Network-project-1/client/SDL2_ttf.dll D:/Projects/Computer-Network-project-1/client && "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/Projects/Computer-Network-project-1/client/arial.ttf D:/Projects/Computer-Network-project-1/client"
   PRE_LINK = cd .
   TARGET_FILE = client\client_app.exe
   TARGET_IMPLIB = client\libclient_app.dll.a

@@ -9,7 +9,7 @@ RtpPacket::RtpPacket()
 {
     // RTP header fields (example values)
     header[0] = (2 << 6);   // Version 2, no padding, no extension, 0 CSRC
-    header[1] = 96;         // Payload type 96 (dynamic)
+    header[1] = 26;
 
     seqNum = 0;
     timestamp = 0;
