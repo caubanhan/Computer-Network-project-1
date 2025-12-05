@@ -30,7 +30,7 @@ RtpReceiver::RtpReceiver(int listenPort)
         sock = INVALID_SOCKET;
     }
 
-    mjpegBuffer.reserve(200000); // ~200 KB buffer
+    mjpegBuffer.reserve(2000000); // ~200 KB buffer
 }
 
 RtpReceiver::~RtpReceiver()
@@ -79,7 +79,7 @@ bool RtpReceiver::getFrame(std::vector<uint8_t>& outFrame)
 {
     if (sock == INVALID_SOCKET) return false;
 
-    uint8_t buf[2000];
+    uint8_t buf[20000];
     sockaddr_in src{};
     int srcLen = sizeof(src);
 
@@ -104,6 +104,12 @@ bool RtpReceiver::getFrame(std::vector<uint8_t>& outFrame)
     // append MJPEG data
     if (payloadSize > 0)
         mjpegBuffer.insert(mjpegBuffer.end(), payload, payload + payloadSize);
+
+    if (mjpegBuffer.size() > 6000000) { 
+        std::cerr << "Warning: Packet loss detected (Missed Marker). Resetting buffer.\n";
+        mjpegBuffer.clear();
+        return false; 
+    }
 
     // Frame END: marker bit = 1
     if (marker) {

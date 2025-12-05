@@ -3,7 +3,7 @@
 #include <iostream>
 
 // Re-define constants to match VideoDisplay for hit testing
-static const int BTN_Y = 620;
+static const int BTN_Y = 720;
 static const int BTN_W = 120;
 static const int BTN_H = 40;
 static const int GAP = 20;
@@ -18,7 +18,7 @@ bool isClick(int mx, int my, SDL_Rect r) {
 }
 
 int main(int argc, char* argv[]) {
-    Client client("127.0.0.1", 554, 25000, "movie.Mjpeg");
+    Client client("127.0.0.1", 8554, 25000, argv[1]);
     VideoDisplay display;
     
     if (!display.init()) return -1;

@@ -3,7 +3,7 @@
 
 // Button Layout Constants
 // Adjusted y positions to match the "bottom bar" look
-static const int BTN_Y = 620;
+static const int BTN_Y = 720;
 static const int BTN_W = 120;
 static const int BTN_H = 40;
 static const int GAP = 20;
@@ -39,7 +39,7 @@ bool VideoDisplay::init() {
     font = TTF_OpenFont("arial.ttf", 18); // Slightly smaller, cleaner font
     if (!font) std::cerr << "Warning: Failed to load arial.ttf\n";
 
-    window = SDL_CreateWindow("RTSP Client", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 700, SDL_WINDOW_SHOWN);
+    window = SDL_CreateWindow("RTSP Client", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1380, 820, SDL_WINDOW_SHOWN);
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
     return (window && renderer);
@@ -112,7 +112,7 @@ void VideoDisplay::renderUI(int clientState, int seconds, int mx, int my, bool m
     // 0=INIT, 1=READY, 2=PLAYING
 
     // 1. Draw Bottom Panel Background
-    SDL_Rect bottomPanel = { 0, 600, 800, 100 };
+    SDL_Rect bottomPanel = { 0, 700, 800, 100 };
     SDL_SetRenderDrawColor(renderer, 220, 220, 220, 255); // Light Gray Panel
     SDL_RenderFillRect(renderer, &bottomPanel);
     
@@ -134,7 +134,15 @@ void VideoDisplay::renderUI(int clientState, int seconds, int mx, int my, bool m
 
     // Optional: Draw Time label
     if (font) {
-         // simple timer text...
+        SDL_Color textColor = { 0, 0, 0, 255 };
+        SDL_Surface* surf = TTF_RenderText_Blended(font, std::to_string(seconds).c_str(), textColor);
+        if (surf) {
+            SDL_Texture* label = SDL_CreateTextureFromSurface(renderer, surf);
+            SDL_Rect textRect = { 600, BTN_Y + (BTN_H - surf->h) / 2, surf->w, surf->h };
+            SDL_RenderCopy(renderer, label, NULL, &textRect);
+            SDL_DestroyTexture(label);
+            SDL_FreeSurface(surf);
+        }
     }
 
     SDL_RenderPresent(renderer);

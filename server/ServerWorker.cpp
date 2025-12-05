@@ -220,6 +220,8 @@ void ServerWorker::sendRtp(){
             static_cast<int>(sizeof(clientAddr))
         );
 
+        std::this_thread::sleep_for(std::chrono::microseconds(500)); // Thêm độ trễ nhỏ để tránh gửi quá nhanh
+
         if (sent == SOCKET_ERROR) {
             int err = WSAGetLastError();
             std::cerr << "sendto failed. WSAGetLastError(): " << err << "\n";

@@ -145,12 +145,12 @@ bool Client::teardown() {
 // IMPORTANT: In getLatestFrame, use your existing code.
 void Client::receiveLoop()
 {
-    // ... (Use the content you provided in your original file) ... 
     // Just make sure to include the logic I provided originally or your own.
     // The key is calling rtpReceiver->getFrame and MjpegDecoder::decode
     using clock = std::chrono::steady_clock;
     auto lastSecond = clock::now();
     std::vector<uint8_t> jpegBuf;
+    int countFrames = 1;
     
     while (workerRunning.load()) {
         jpegBuf.clear();
@@ -164,6 +164,7 @@ void Client::receiveLoop()
                 latestH = h;
                 frameAvailable.store(true);
             }
+            std::cout << "Received Frame: " << countFrames++ << "\n";
         }
         // Time keeping
         auto now = clock::now();
@@ -171,7 +172,7 @@ void Client::receiveLoop()
             if (state.load() == PLAYING) playSeconds.fetch_add(1);
             lastSecond = now;
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        //std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 }
 

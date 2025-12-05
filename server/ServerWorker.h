@@ -36,7 +36,7 @@ private:
     std::thread rtpThread;            
 	std::atomic<bool> sending{ false }; // RTP sending flag
     
-	uint8_t frameBuf[65536]; // Buffer to hold video frame data
+	uint8_t frameBuf[655360]; // Buffer to hold video frame data
 public:
     ServerWorker(SOCKET clientsocket, const sockaddr_in& clientAddr);
 	~ServerWorker();
