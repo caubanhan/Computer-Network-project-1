@@ -49,3 +49,7 @@ client/Release/
 .vscode/settings.json
 .vscode/launch.json
 .vscode/tasks.json
+
+# media files
+*.mjpeg
+*.Mjpeg
