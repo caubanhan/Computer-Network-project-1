@@ -1,4 +1,5 @@
-﻿#include "Client.h"
+﻿#define SDL_MAIN_HANDLED
+#include "Client.h"
 #include "VideoDisplay.h"
 #include <iostream>
 
@@ -18,7 +19,7 @@ bool isClick(int mx, int my, SDL_Rect r) {
 }
 
 int main(int argc, char* argv[]) {
-    Client client("127.0.0.1", 554, 25000, "movie.Mjpeg");
+    Client client("127.0.0.1", 8554, 25000, "movie.Mjpeg");
     VideoDisplay display;
     
     if (!display.init()) return -1;
