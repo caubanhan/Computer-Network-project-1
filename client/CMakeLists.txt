@@ -1,21 +1,29 @@
-﻿# Tạo file chạy tên là 'client_app'
+﻿set(BUILD_SHARED_LIBS OFF)
+
 add_executable(client_app
     ClientLauncher.cpp
     Client.cpp
     Client.h
-    # main_client.cpp  
+    VideoDisplay.cpp
+    RtpReceiver.cpp
 )
 
-# Find OpenCV (required for cv::imdecode / imshow)
-find_package(OpenCV REQUIRED)
+set_target_properties(client_app PROPERTIES
+    WIN32_EXECUTABLE OFF
+)
 
-# Link thư viện:
-# 1. common_lib: Để dùng RtpPacket
-# 2. ws2_32: Để dùng socket
-# 3. OpenCV_LIBS: Để hiển thị ảnh
-target_include_directories(client_app PRIVATE ${OpenCV_INCLUDE_DIRS})
-target_link_libraries(client_app PRIVATE 
+target_link_options(client_app PRIVATE "-Wl,-subsystem,console")
+
+file(TO_CMAKE_PATH ".\\lib" SDL_LIB)
+file(TO_CMAKE_PATH ".\\include\\SDL2" SDL_INC)
+
+include_directories(${SDL_INC})
+target_link_directories(client_app PRIVATE ${SDL_LIB})
+
+target_link_libraries(client_app PRIVATE
     common
-    ws2_32 
-    ${OpenCV_LIBS}
+    ws2_32
+    SDL2main
+    SDL2
+    SDL2_ttf
 )

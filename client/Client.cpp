@@ -150,13 +150,14 @@ void Client::receiveLoop()
     using clock = std::chrono::steady_clock;
     auto lastSecond = clock::now();
     std::vector<uint8_t> jpegBuf;
-    int countFrames = 1;
-    
     while (workerRunning.load()) {
         jpegBuf.clear();
-        if (rtpReceiver->getFrame(jpegBuf)) {
+        // Get the latest frame, discard old ones
+        while (rtpReceiver->getFrame(jpegBuf)) {}
+
+        if (!jpegBuf.empty()) {
             std::vector<uint8_t> rgb;
-            int w=0, h=0;
+            int w = 0, h = 0;
             if (MjpegDecoder::decode(jpegBuf, rgb, w, h)) {
                 std::lock_guard<std::mutex> lk(latestMutex);
                 latestRgb.swap(rgb);
@@ -164,16 +165,16 @@ void Client::receiveLoop()
                 latestH = h;
                 frameAvailable.store(true);
             }
-            std::cout << "Received Frame: " << countFrames++ << "\n";
         }
-        // Time keeping
+
+        // maintain playback timer
         auto now = clock::now();
         if (now - lastSecond >= std::chrono::seconds(1)) {
             if (state.load() == PLAYING) playSeconds.fetch_add(1);
             lastSecond = now;
         }
-        //std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
+
 }
 
 bool Client::getLatestFrame(std::vector<uint8_t>& outRgb, int& outW, int& outH)

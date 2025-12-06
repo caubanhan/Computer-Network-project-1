@@ -1,4 +1,5 @@
-﻿#include "Client.h"
+﻿#define SDL_MAIN_HANDLED
+#include "Client.h"
 #include "VideoDisplay.h"
 #include <iostream>
 
@@ -18,7 +19,7 @@ bool isClick(int mx, int my, SDL_Rect r) {
 }
 
 int main(int argc, char* argv[]) {
-    Client client("127.0.0.1", 8554, 25000, argv[1]);
+    Client client(argv[1], argv[2] ? atoi(argv[2]) : 8089, 25000, argv[3] ? argv[3] : "movie.Mjpeg"); // Luong Nhan: updated to get args from command line
     VideoDisplay display;
     
     if (!display.init()) return -1;

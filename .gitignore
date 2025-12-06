@@ -12,7 +12,7 @@
 
 # Compiled binaries
 *.exe
-#*.dll
+#*.dll  // for portable dlls, consider keeping them
 #*.lib
 *.exp
 *.pdb
