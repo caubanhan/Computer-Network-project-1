@@ -1,26 +1,33 @@
-#ifndef RTP_PACKET_H    // for c++ compilers
+#ifndef RTP_PACKET_H
 #define RTP_PACKET_H
 
-#pragma once            // for c compilers
-
-#include <vector>
 #include <cstdint>
+#include <winsock2.h> // Cho htons, htonl
 
-constexpr int TIMESTAMP_INCREMENT = 3600; // Example timestamp increment per frame
+// Định nghĩa RTP Header struct để thao tác nhanh hơn
+struct RtpHeader {
+    uint8_t version_p_x_cc; // Version, Padding, Extension, CSRC Count
+    uint8_t m_pt;           // Marker, Payload Type
+    uint16_t sequence_number;
+    uint32_t timestamp;
+    uint32_t ssrc;
+};
 
 class RtpPacket {
 private:
-    char header[12];
-    std::vector<unsigned char> payload;
-    int seqNum;
-    int timestamp;
-    int ssrc;
-	size_t offset;
-    uint32_t clockrate() { return 90000; } // RTP clock rate for video
+    RtpHeader header;       // Header struct thay vì mảng char
+    const uint8_t* dataPtr; // Zero-copy: Chỉ trỏ tới dữ liệu, không copy
+    size_t dataSize;        // Kích thước frame
+    size_t offset;          // Vị trí hiện tại đang đọc
+
 public:
     RtpPacket();
-	void beginFrame(const uint8_t* frameData, int frameSize); // Initialize RTP packet with frame data
-	bool getNextPacket(uint8_t* outBuffer, int& outSize); // Get next RTP packet
+    
+    // Hàm này phải rất nhẹ
+    void beginFrame(const uint8_t* frameData, int frameSize);
+    
+    // Trả về false nếu hết dữ liệu
+    bool getNextPacket(uint8_t* outBuffer, int& outSize);
 };
 
 #endif

@@ -18,7 +18,7 @@ bool isClick(int mx, int my, SDL_Rect r) {
 }
 
 int main(int argc, char* argv[]) {
-    Client client("127.0.0.1", 8554, 25000, "movieHD.mjpeg");
+    Client client("127.0.0.1", 8554, 25000, "movie.mjpeg");
     VideoDisplay display;
     
     if (!display.init()) return -1;

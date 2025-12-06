@@ -2,12 +2,14 @@
 #include <fstream>
 #include <string>
 #include <cstdint>
+#include <vector>
 
 class VideoStream {
 private:
-    std::ifstream videoFile;
     std::string fileName;
     int frameNbr = 0;
+    std::vector<uint8_t> buffer;
+    size_t position = 0;
 public:
     VideoStream() = default; // Add default constructor
     VideoStream(std::string fName);

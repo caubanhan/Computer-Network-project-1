@@ -1,90 +1,71 @@
-﻿#include <winsock2.h>
-#include <ws2tcpip.h>
-
-#pragma comment(lib, "ws2_32.lib")
-#include "RtpPacket.h"
+﻿#include "RtpPacket.h"
 #include <cstring>
+#include <algorithm> // cho std::min
 
-RtpPacket::RtpPacket()
-{
-    // RTP header fields (example values)
-    header[0] = (2 << 6);   // Version 2, no padding, no extension, 0 CSRC
-    header[1] = 26;
+// Cấu hình
+constexpr int MAX_RTP_PAYLOAD = 1400; // Tăng lên gần giới hạn MTU Ethernet
+constexpr int TIMESTAMP_INCREMENT = 3600; // 90kHz / 25fps = 3600
 
-    seqNum = 0;
-    timestamp = 0;
-    ssrc = 123456; // example SSRC
-
+RtpPacket::RtpPacket() {
+    // Khởi tạo Header một lần duy nhất
+    header.version_p_x_cc = 0x80; // Ver=2 (10), P=0, X=0, CC=0 -> 10000000
+    header.m_pt = 26;             // Payload Type 26 (JPEG), Marker = 0 ban đầu
+    header.sequence_number = 0;
+    header.timestamp = 0;
+    header.ssrc = htonl(123456);  // SSRC cố định, chuyển sang Network Order ngay
+    
+    dataPtr = nullptr;
+    dataSize = 0;
     offset = 0;
 }
 
-void RtpPacket::beginFrame(const uint8_t* frameData, int frameSize)
-{
-    // Reset payload and offset for new frame
-    payload.assign(frameData, frameData + frameSize);
+void RtpPacket::beginFrame(const uint8_t* frameData, int frameSize) {
+    // ZERO-COPY: Chỉ lưu tham chiếu. 
+    // LƯU Ý: frameData phải tồn tại cho đến khi gửi xong frame này.
+    dataPtr = frameData;
+    dataSize = frameSize;
     offset = 0;
 
-    // Update timestamp per frame (example: +3600)
-    timestamp += TIMESTAMP_INCREMENT;
-
-    // Prepare RTP header
-    header[0] = (2 << 6);  // Version 2
-    header[1] = 26;        // Payload type 96 (dynamic)
-                           // Payload type 26 for JPEG (static)
+    // Tăng timestamp (cần chuyển đổi byte order khi ghi vào gói tin sau này)
+    // Ở đây ta giữ giá trị Host order trong biến thành viên để tính toán
+    uint32_t currentTs = ntohl(header.timestamp);
+    header.timestamp = htonl(currentTs + TIMESTAMP_INCREMENT);
 }
 
-bool RtpPacket::getNextPacket(uint8_t* outBuffer, int& outSize)
-{
-    const int MAX_RTP_PAYLOAD = 1200;   // safe MTU-sized payload
+bool RtpPacket::getNextPacket(uint8_t* outBuffer, int& outSize) {
+    if (offset >= dataSize) {
+        return false; 
+    }
 
-    if (offset >= payload.size())
-        return false; // no more packets
-
-    // Compute packet payload size
-    int remaining = payload.size() - offset;
+    // 1. Tính toán kích thước payload cho gói tin này
+    int remaining = dataSize - offset;
+    int payloadSize = (remaining > MAX_RTP_PAYLOAD) ? MAX_RTP_PAYLOAD : remaining;
     bool isLastPacket = (remaining <= MAX_RTP_PAYLOAD);
-    int packetPayload = remaining > MAX_RTP_PAYLOAD ? MAX_RTP_PAYLOAD : remaining;
 
-    // Build RTP header
-    uint16_t seq = htons(seqNum++);
-    uint32_t ts = htonl(timestamp);
-    uint32_t id = htonl(ssrc);
-
-    // Copy header bytes
-    std::memcpy(outBuffer, header, 12);
-
+    // 2. Xử lý Marker bit (Bit 1 của byte thứ 2)
+    // Payload type 26 nằm ở 7 bit thấp, Marker ở bit cao nhất
+    uint8_t basePT = 26; 
     if (isLastPacket) {
-        outBuffer[1] |= 0x80; // Marker = 1
+        header.m_pt = basePT | 0x80; // Set Marker bit = 1
+    } else {
+        header.m_pt = basePT & 0x7F; // Set Marker bit = 0
     }
-    else {
-        outBuffer[1] &= 0x7F; // Marker = 0
-    }
 
-    // use & 0xFF to ensure only the last 8 bits are taken
-    // Set sequence number
-    outBuffer[2] = (seq >> 8) & 0xFF;
-    outBuffer[3] = seq & 0xFF;
+    // 3. Copy Header vào buffer (12 bytes)
+    // Lưu ý: Sequence number cần tăng và chuyển sang Network Order
+    uint16_t currentSeq = ntohs(header.sequence_number);
+    header.sequence_number = htons(currentSeq + 1); // Tăng seq num
 
-    // Timestamp
-    outBuffer[4] = (ts >> 24) & 0xFF;
-    outBuffer[5] = (ts >> 16) & 0xFF;
-    outBuffer[6] = (ts >> 8) & 0xFF;
-    outBuffer[7] = ts & 0xFF;
+    // Copy toàn bộ struct header vào buffer (nhanh hơn gán từng byte)
+    std::memcpy(outBuffer, &header, 12);
 
-    // SSRC
-    outBuffer[8] = (id >> 24) & 0xFF;
-    outBuffer[9] = (id >> 16) & 0xFF;
-    outBuffer[10] = (id >> 8) & 0xFF;
-    outBuffer[11] = id & 0xFF;
+    // 4. Copy Payload (Zero-copy logic phát huy tác dụng ở đây)
+    // Đọc trực tiếp từ dataPtr nguồn vào outBuffer mạng
+    std::memcpy(outBuffer + 12, dataPtr + offset, payloadSize);
 
-    // Copy payload chunk
-    std::memcpy(outBuffer + 12, payload.data() + offset, packetPayload);
-
-    // Output size includes header + payload
-    outSize = 12 + packetPayload;
-
-    // Advance offset
-    offset += packetPayload;
+    // 5. Cập nhật kích thước và offset
+    outSize = 12 + payloadSize;
+    offset += payloadSize;
 
     return true;
 }
