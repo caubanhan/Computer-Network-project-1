@@ -43,7 +43,7 @@ RtpReceiver::~RtpReceiver()
 // parse RTP header (12 bytes)
 // RTP sanity security checks and extract payload
 bool RtpReceiver::parseRtpPacket(const uint8_t* data, int size, bool& outMarker,
-                                 const uint8_t*& outPayload, int& outPayloadSize)
+                                 uint16_t& outSeqNum, const uint8_t*& outPayload, int& outPayloadSize)
 {
     if (size < 12) return false;
 
@@ -58,6 +58,9 @@ bool RtpReceiver::parseRtpPacket(const uint8_t* data, int size, bool& outMarker,
 
     // Accept both payload type 26 (MJPEG RFC 2435) and 96 (dynamic)
     if (payloadType != (uint8_t)26) return false;
+
+    // sequence number
+    outSeqNum = (data[2] << 8) | data[3];
 
     // RTP fixed header length = 12 bytes (vì CC = 0)
     outPayload = data + 12;
@@ -88,10 +91,13 @@ bool RtpReceiver::getFrame(std::vector<uint8_t>& outFrame)
 
     bool marker = false;
     const uint8_t* payload = nullptr;
+    uint16_t seqNum = 0;
     int payloadSize = 0;
 
-    if (!parseRtpPacket(buf, bytes, marker, payload, payloadSize))
+    if (!parseRtpPacket(buf, bytes, marker, seqNum, payload, payloadSize))
         return false;
+
+    std::cout << "Seq: " << seqNum << "\n";
 
     // append MJPEG data
     if (payloadSize > 0)

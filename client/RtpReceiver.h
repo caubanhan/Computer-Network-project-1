@@ -20,6 +20,6 @@ private:
     std::vector<uint8_t> mjpegBuffer;
 
     // parser RTP header
-    bool parseRtpPacket(const uint8_t* data, int size,
-                        bool& outMarker, const uint8_t*& outPayload, int& outPayloadSize);
+    bool parseRtpPacket(const uint8_t* data, int size, bool& outMarker, 
+                        uint16_t& outSeqNum, const uint8_t*& outPayload, int& outPayloadSize);
 };
