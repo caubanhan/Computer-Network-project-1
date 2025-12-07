@@ -97,7 +97,7 @@ bool RtpReceiver::getFrame(std::vector<uint8_t>& outFrame)
     if (payloadSize > 0)
         mjpegBuffer.insert(mjpegBuffer.end(), payload, payload + payloadSize);
 
-    if (mjpegBuffer.size() > 6000000) { 
+    if (mjpegBuffer.size() > 500000) { 
         std::cerr << "Warning: Packet loss detected (Missed Marker). Resetting buffer.\n";
         mjpegBuffer.clear();
         return false; 

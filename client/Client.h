@@ -59,6 +59,7 @@ private:
     std::deque<std::vector<uint8_t>> frameCache;
     std::mutex cacheMutex;
     std::atomic<bool> isRenderActive;
+    std::chrono::steady_clock::time_point lastFrameTime; // then set this to 40ms (25fps) for not burning CPU client
 
     std::atomic<State> state;
     std::atomic<int> playSeconds;

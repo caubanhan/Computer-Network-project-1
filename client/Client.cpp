@@ -160,11 +160,11 @@ void Client::receiveLoop()
         {
             std::lock_guard<std::mutex> lk(cacheMutex);
             frameCache.push_back(jpegBuf);
-            
+            frameAvailable.store(true);
         }
         } else {
             // Small sleep to prevent CPU burn if no packets
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            // std::this_thread::sleep_for(std::chrono::microseconds(400));
         }
 
         // maintain playback timer
@@ -174,21 +174,32 @@ void Client::receiveLoop()
             lastSecond = now;
         }
     }
-
 }
 
 // updated existing getLatestFrame() from feature/Hoc-client version
 bool Client::getLatestFrame(std::vector<uint8_t>& outRgb, int& outW, int& outH)
 {
     if (!isRenderActive.load() && state.load() != PLAYING) return false;
-    // if (!frameAvailable.load()) return false;
+    if (!frameAvailable.load()) return false;
+
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastFrameTime).count();
+    
+    // 40ms = 1000ms / 25fps
+    if (outW != 0 && elapsed < 40) { 
+        return false; // Too early, come back later
+    }
+    lastFrameTime = now;
 
     std::vector<uint8_t> nextFrameJpeg;
 
     // 1. Get next frame from Cache
     {
         std::lock_guard<std::mutex> lk(cacheMutex);
-        if (frameCache.empty()) return false; // Cache underrun (buffering)
+        if (frameCache.empty()) {
+            std::cout << "[Debug] Cache is EMPTY!\n";   // delete later
+            return false; // Cache underrun (buffering)
+        }
         
         nextFrameJpeg = frameCache.front();
         frameCache.pop_front();
@@ -203,5 +214,6 @@ bool Client::getLatestFrame(std::vector<uint8_t>& outRgb, int& outW, int& outH)
         outH = h;
         return true;
     }
-    return true;
+    std::cout << "[Debug] Decode FAILED!\n";   // delete later
+    return false;
 }

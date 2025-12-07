@@ -4,10 +4,12 @@
 #include <iostream>
 
 // Re-define constants to match VideoDisplay for hit testing
-static const int BTN_Y = 720;
-static const int BTN_W = 120;
-static const int BTN_H = 40;
-static const int GAP = 20;
+static const int WIN_W = 1300; 
+static const int WIN_H = 850;
+static const int BTN_Y = 730;
+static const int BTN_W = 150;
+static const int BTN_H = 50;
+static const int GAP = 40;
 
 static const SDL_Rect btnSetup = { 50, BTN_Y, BTN_W, BTN_H };
 static const SDL_Rect btnPlay  = { 50 + BTN_W + GAP, BTN_Y, BTN_W, BTN_H };
@@ -26,6 +28,7 @@ int main(int argc, char* argv[]) {
 
     bool quit = false;
     std::vector<uint8_t> rgb; 
+    rgb.clear();
     int w = 0, h = 0;
 
     // Mouse State Variables
