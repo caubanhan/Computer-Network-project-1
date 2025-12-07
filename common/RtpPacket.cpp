@@ -13,7 +13,7 @@ RtpPacket::RtpPacket()
 
     seqNum = 0;
     timestamp = 0;
-    ssrc = 123456; // example SSRC
+    ssrc = 123456; // pick random SSRC
 
     offset = 0;
 }
@@ -29,8 +29,7 @@ void RtpPacket::beginFrame(const uint8_t* frameData, int frameSize)
 
     // Prepare RTP header
     header[0] = (2 << 6);  // Version 2
-    header[1] = 26;        // Payload type 96 (dynamic)
-                           // Payload type 26 for JPEG (static)
+    header[1] = 26;        // Payload type 26 for JPEG (static)
 }
 
 bool RtpPacket::getNextPacket(uint8_t* outBuffer, int& outSize)

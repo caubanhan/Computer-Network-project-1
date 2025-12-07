@@ -87,11 +87,19 @@ bool Client::setup() {
         rtpReceiver = std::make_unique<RtpReceiver>(rtpPort);
     } catch (...) { return false; }
 
-    // 3. Send SETUP
-    if (sendRtspRequest("SETUP")) {
-        state.store(READY);
+    // add a trick to update advance cache feature
+    // 3. Send SETUP also sent PLAY but not render yet
+    if (!sendRtspRequest("SETUP")) return false;
+
+    if (sendRtspRequest("PLAY")) {
+        workerRunning.store(true);
+        isRenderActive.store(false); // Don't show video yet
+        workerThread = std::thread(&Client::receiveLoop, this);
+        
+        state.store(READY); // but state is still READY
         return true;
     }
+
     logFile.close();
     return false;
 }
@@ -99,26 +107,19 @@ bool Client::setup() {
 bool Client::play() {
     if (state.load() != READY) return false;
 
-    if (sendRtspRequest("PLAY")) {
-        workerRunning.store(true);
-        playSeconds.store(0);
-        workerThread = std::thread(&Client::receiveLoop, this);
-        state.store(PLAYING);
-        return true;
-    }
-    return false;
+    isRenderActive.store(true); // actual start rendering point
+    playSeconds.store(0);
+    state.store(PLAYING);
+    return true;
 }
 
 bool Client::pause() {
     if (state.load() != PLAYING) return false;
 
-    if (sendRtspRequest("PAUSE")) {
-        workerRunning.store(false);
-        if (workerThread.joinable()) workerThread.join();
-        state.store(READY);
-        return true;
-    }
-    return false;
+    // not sending RTSP PAUSE => server still sends RTP packets => cache frames
+    isRenderActive.store(false);    // just stop rendering
+    state.store(READY);             // dont care state, it's used to handle GUI
+    return true;
 }
 
 bool Client::teardown() {
@@ -137,34 +138,33 @@ bool Client::teardown() {
     state.store(INIT);
     cseq = 1;
     sessionID = "";
+
+    // clear cached frames when teardown
+    std::lock_guard<std::mutex> lk(cacheMutex);
+    frameCache.clear();
+
     return true;
 }
 
-// ... receiveLoop and getLatestFrame remain mostly the same ...
-// Copy your existing receiveLoop and getLatestFrame here.
-// IMPORTANT: In getLatestFrame, use your existing code.
+// receiveLoop and getLatestFrame remain mostly the same
 void Client::receiveLoop()
 {
-    // Just make sure to include the logic I provided originally or your own.
-    // The key is calling rtpReceiver->getFrame and MjpegDecoder::decode
+    // The key is calling rtpReceiver->getFrame
     using clock = std::chrono::steady_clock;
     auto lastSecond = clock::now();
     std::vector<uint8_t> jpegBuf;
     while (workerRunning.load()) {
         jpegBuf.clear();
-        // Get the latest frame, discard old ones
-        while (rtpReceiver->getFrame(jpegBuf)) {}
-
-        if (!jpegBuf.empty()) {
-            std::vector<uint8_t> rgb;
-            int w = 0, h = 0;
-            if (MjpegDecoder::decode(jpegBuf, rgb, w, h)) {
-                std::lock_guard<std::mutex> lk(latestMutex);
-                latestRgb.swap(rgb);
-                latestW = w;
-                latestH = h;
-                frameAvailable.store(true);
-            }
+        if (rtpReceiver->getFrame(jpegBuf)) {
+            // 2. Store in Cache (Thread Safe)
+        {
+            std::lock_guard<std::mutex> lk(cacheMutex);
+            frameCache.push_back(jpegBuf);
+            
+        }
+        } else {
+            // Small sleep to prevent CPU burn if no packets
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
 
         // maintain playback timer
@@ -177,14 +177,31 @@ void Client::receiveLoop()
 
 }
 
+// updated existing getLatestFrame() from feature/Hoc-client version
 bool Client::getLatestFrame(std::vector<uint8_t>& outRgb, int& outW, int& outH)
 {
-    if (!frameAvailable.load()) return false;
-    std::lock_guard<std::mutex> lk(latestMutex);
-    if (latestRgb.empty()) return false;
-    outRgb = latestRgb;
-    outW = latestW;
-    outH = latestH;
-    frameAvailable.store(false);
+    if (!isRenderActive.load() && state.load() != PLAYING) return false;
+    // if (!frameAvailable.load()) return false;
+
+    std::vector<uint8_t> nextFrameJpeg;
+
+    // 1. Get next frame from Cache
+    {
+        std::lock_guard<std::mutex> lk(cacheMutex);
+        if (frameCache.empty()) return false; // Cache underrun (buffering)
+        
+        nextFrameJpeg = frameCache.front();
+        frameCache.pop_front();
+    }
+
+    // 2. decode that frame
+    int w=0, h=0;
+    std::vector<uint8_t> rgb;
+    if (MjpegDecoder::decode(nextFrameJpeg, rgb, w, h)) {
+        outRgb = rgb;
+        outW = w;
+        outH = h;
+        return true;
+    }
     return true;
 }

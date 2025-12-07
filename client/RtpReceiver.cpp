@@ -30,7 +30,7 @@ RtpReceiver::RtpReceiver(int listenPort)
         sock = INVALID_SOCKET;
     }
 
-    mjpegBuffer.reserve(2000000); // ~200 KB buffer
+    mjpegBuffer.reserve(2000000); // ~2 MB buffer
 }
 
 RtpReceiver::~RtpReceiver()
@@ -40,14 +40,10 @@ RtpReceiver::~RtpReceiver()
     WSACleanup();
 }
 
-// -----------------------------------------------------------
 // parse RTP header (12 bytes)
-// return payload pointer + marker bit
-// -----------------------------------------------------------
-bool RtpReceiver::parseRtpPacket(const uint8_t* data, int size,
-                                 bool& outMarker,
-                                 const uint8_t*& outPayload,
-                                 int& outPayloadSize)
+// RTP sanity security checks and extract payload
+bool RtpReceiver::parseRtpPacket(const uint8_t* data, int size, bool& outMarker,
+                                 const uint8_t*& outPayload, int& outPayloadSize)
 {
     if (size < 12) return false;
 
@@ -61,9 +57,7 @@ bool RtpReceiver::parseRtpPacket(const uint8_t* data, int size,
     uint8_t payloadType = mpt & 0x7F;
 
     // Accept both payload type 26 (MJPEG RFC 2435) and 96 (dynamic)
-    if (payloadType != 26 && payloadType != 96) {
-        return false;
-    }
+    if (payloadType != (uint8_t)26) return false;
 
     // RTP fixed header length = 12 bytes (vì CC = 0)
     outPayload = data + 12;
@@ -72,9 +66,7 @@ bool RtpReceiver::parseRtpPacket(const uint8_t* data, int size,
     return true;
 }
 
-// -----------------------------------------------------------
 // Nhận 1 frame JPEG hoàn chỉnh
-// -----------------------------------------------------------
 bool RtpReceiver::getFrame(std::vector<uint8_t>& outFrame)
 {
     if (sock == INVALID_SOCKET) return false;

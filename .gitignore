@@ -10,6 +10,12 @@
 *.vcxproj.user
 *.vcxproj.filters
 
+# VS code
+.vscode/
+
+# class diagrams
+*."class diagram"/
+
 # Compiled binaries
 *.exe
 #*.dll  // for portable dlls, consider keeping them
@@ -44,11 +50,13 @@ client/Release/
 # Ninja build files
 .ninja_deps
 .ninja_log
+.ninja
 
 # vscode settings
 .vscode/settings.json
 .vscode/launch.json
 .vscode/tasks.json
+*.json
 
 # media files
 *.mjpeg

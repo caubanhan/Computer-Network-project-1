@@ -16,6 +16,7 @@ Server::~Server()
         wsaInitialized = false;
     }
 }
+
 // Need WSACleanup() when init = false
 bool Server::init(int port)
 {

@@ -11,10 +11,10 @@
       "buildCommandArgs": "",
       "ctestCommandArgs": "",
 
-      "variables": [ //Open CV
+      "variables": [ 
         {
           "name": "OpenCV_DIR",
-          "value": "D:/Window's Things/New folder/opencv", //Path to Open CV build folder (tự cài đặt)
+          "value": "D:/AI/opencv",
           "type": "PATH"
         }
       ]

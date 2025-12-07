@@ -2,11 +2,14 @@
 #include <iostream>
 
 // Button Layout Constants
+// window size 1380x820 (Constant)
 // Adjusted y positions to match the "bottom bar" look
-static const int BTN_Y = 720;
-static const int BTN_W = 120;
-static const int BTN_H = 40;
-static const int GAP = 20;
+static const int WIN_W = 1300; 
+static const int WIN_H = 850;
+static const int BTN_Y = 730;
+static const int BTN_W = 150;
+static const int BTN_H = 50;
+static const int GAP = 40;
 
 // Calculate X positions to center them nicely
 static const SDL_Rect btnSetup = { 50, BTN_Y, BTN_W, BTN_H };
@@ -55,7 +58,15 @@ void VideoDisplay::renderFrame(const std::vector<uint8_t>& rgb, int w, int h) {
     SDL_UpdateTexture(texture, NULL, rgb.data(), w * 3);
 
     // Draw Video in a specific area (leaving space at bottom for UI)
-    SDL_Rect dst = { (800 - w) / 2, 50, w, h };
+    SDL_Rect dst = { (WIN_W - w) / 2, 10, w, h };
+
+    // optional: Scale down if video is HUGE (larger than window)
+    if (w > WIN_W) {
+        dst.w = WIN_W;
+        dst.h = (h * WIN_W) / w; // Keep aspect ratio
+        dst.x = 0;
+        dst.y = 0;
+    }
     
     // Draw a black border around video
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -118,7 +129,7 @@ void VideoDisplay::renderUI(int clientState, int seconds, int mx, int my, bool m
     
     // Draw a separator line
     SDL_SetRenderDrawColor(renderer, 180, 180, 180, 255);
-    SDL_RenderDrawLine(renderer, 0, 600, 800, 600);
+    SDL_RenderDrawLine(renderer, 0, 700, 800, 700);
 
     // 2. Determine which buttons are enabled based on RTSP State
     bool canSetup = (clientState == 0);          // Only if INIT

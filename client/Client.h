@@ -4,6 +4,7 @@
 #include <mutex>
 #include <atomic>
 #include <thread>
+#include <deque> // for cahing
 #include <winsock2.h> // Needed for RTSP TCP Socket
 
 #include "RtpReceiver.h"
@@ -53,6 +54,11 @@ private:
     int latestH;
     std::mutex latestMutex;
     std::atomic<bool> frameAvailable;
+
+    // update for caching frames
+    std::deque<std::vector<uint8_t>> frameCache;
+    std::mutex cacheMutex;
+    std::atomic<bool> isRenderActive;
 
     std::atomic<State> state;
     std::atomic<int> playSeconds;

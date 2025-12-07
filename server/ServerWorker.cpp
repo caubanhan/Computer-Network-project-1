@@ -174,7 +174,7 @@ void ServerWorker::executeRtspRequest()
 	}
 }
 
-// This function would send RTP packets to the client
+// send RTP packets to the client
 void ServerWorker::sendRtp(){
 
 	/* 
@@ -220,7 +220,7 @@ void ServerWorker::sendRtp(){
             static_cast<int>(sizeof(clientAddr))
         );
 
-        std::this_thread::sleep_for(std::chrono::microseconds(400)); // Thêm độ trễ nhỏ để tránh gửi quá nhanh => packet loss
+        std::this_thread::sleep_for(std::chrono::microseconds(300)); // Thêm độ trễ nhỏ để tránh gửi quá nhanh => packet loss
 
         if (sent == SOCKET_ERROR) {
             int err = WSAGetLastError();

@@ -66,9 +66,7 @@ int main(int argc, char* argv[]) {
         SDL_RenderClear(display.getRenderer());
 
         // 2. Render Video (if available)
-        if (client.getLatestFrame(rgb, w, h)) {
-            display.renderFrame(rgb, w, h);
-        } else if (!rgb.empty()) {
+        if (client.getLatestFrame(rgb, w, h) || !rgb.empty()) {
             display.renderFrame(rgb, w, h);
         }
 
