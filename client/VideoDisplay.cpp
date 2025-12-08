@@ -119,6 +119,14 @@ void VideoDisplay::drawButton(SDL_Rect rect, std::string text, int mx, int my, b
     }
 }
 
+std::string timeFormat(int seconds) {
+    int minutes = seconds / 60;
+    int remainingSeconds = seconds % 60;
+    char buffer[6];
+    snprintf(buffer, sizeof(buffer), "%02d:%02d", minutes, remainingSeconds);
+    return std::string(buffer);
+}
+
 void VideoDisplay::renderUI(int clientState, int seconds, int mx, int my, bool mouseDown) {
     // 0=INIT, 1=READY, 2=PLAYING
 
@@ -146,10 +154,10 @@ void VideoDisplay::renderUI(int clientState, int seconds, int mx, int my, bool m
     // Optional: Draw Time label
     if (font) {
         SDL_Color textColor = { 0, 0, 0, 255 };
-        SDL_Surface* surf = TTF_RenderText_Blended(font, std::to_string(seconds).c_str(), textColor);
+        SDL_Surface* surf = TTF_RenderText_Blended(font, timeFormat(seconds).c_str(), textColor);
         if (surf) {
             SDL_Texture* label = SDL_CreateTextureFromSurface(renderer, surf);
-            SDL_Rect textRect = { 600, BTN_Y + (BTN_H - surf->h) / 2, surf->w, surf->h };
+            SDL_Rect textRect = { 50 + 2 * BTN_W + GAP / 2, BTN_Y - 20, surf->w, surf->h };
             SDL_RenderCopy(renderer, label, NULL, &textRect);
             SDL_DestroyTexture(label);
             SDL_FreeSurface(surf);

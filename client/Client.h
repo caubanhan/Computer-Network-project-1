@@ -63,4 +63,5 @@ private:
 
     std::atomic<State> state;
     std::atomic<int> playSeconds;
+    int totalFramesRendered;
 };

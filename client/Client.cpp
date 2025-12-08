@@ -11,7 +11,7 @@ Client::Client(const std::string& serverAddr_, int rtspPort_, int rtpListenPort_
       rtspSocket(INVALID_SOCKET), cseq(1), sessionID(""),
       rtpReceiver(nullptr), workerRunning(false),
       latestW(0), latestH(0), frameAvailable(false),
-      state(INIT), playSeconds(0)
+      state(INIT), playSeconds(0), totalFramesRendered(0), isRenderActive(false)
 {
     // Initialize Winsock if not done elsewhere
     WSADATA wsa;
@@ -108,7 +108,6 @@ bool Client::play() {
     if (state.load() != READY) return false;
 
     isRenderActive.store(true); // actual start rendering point
-    playSeconds.store(0);
     state.store(PLAYING);
     return true;
 }
@@ -143,6 +142,9 @@ bool Client::teardown() {
     std::lock_guard<std::mutex> lk(cacheMutex);
     frameCache.clear();
 
+    totalFramesRendered = 0;
+    playSeconds.store(0);
+
     return true;
 }
 
@@ -150,8 +152,6 @@ bool Client::teardown() {
 void Client::receiveLoop()
 {
     // The key is calling rtpReceiver->getFrame
-    using clock = std::chrono::steady_clock;
-    auto lastSecond = clock::now();
     std::vector<uint8_t> jpegBuf;
     while (workerRunning.load()) {
         jpegBuf.clear();
@@ -165,13 +165,6 @@ void Client::receiveLoop()
         } else {
             // Small sleep to prevent CPU burn if no packets
             // std::this_thread::sleep_for(std::chrono::microseconds(400));
-        }
-
-        // maintain playback timer
-        auto now = clock::now();
-        if (now - lastSecond >= std::chrono::seconds(1)) {
-            if (state.load() == PLAYING) playSeconds.fetch_add(1);
-            lastSecond = now;
         }
     }
 }
@@ -212,6 +205,12 @@ bool Client::getLatestFrame(std::vector<uint8_t>& outRgb, int& outW, int& outH)
         outRgb = rgb;
         outW = w;
         outH = h;
+
+        totalFramesRendered++;
+        
+        // Calculate seconds based on 25 FPS standard
+        int currentSec = totalFramesRendered / 25;
+        playSeconds.store(currentSec);
         return true;
     }
     std::cout << "[Debug] Decode FAILED!\n";   // delete later

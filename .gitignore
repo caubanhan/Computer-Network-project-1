@@ -50,7 +50,8 @@ client/Release/
 # Ninja build files
 .ninja_deps
 .ninja_log
-.ninja
+*.ninja
+build.ninja
 
 # vscode settings
 .vscode/settings.json
