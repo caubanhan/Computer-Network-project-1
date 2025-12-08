@@ -45,9 +45,10 @@ bool RtpPacket::getNextPacket(uint8_t* outBuffer, int& outSize)
     int packetPayload = remaining > MAX_RTP_PAYLOAD ? MAX_RTP_PAYLOAD : remaining;
 
     // Build RTP header
-    uint16_t seq = htons(seqNum++);
-    uint32_t ts = htonl(timestamp);
-    uint32_t id = htonl(ssrc);
+    // dont need to use htons() and htonl() since we set byte manually in this lab
+    uint16_t seq = seqNum++;
+    uint32_t ts = timestamp;
+    uint32_t id = ssrc;
 
     // Copy header bytes
     std::memcpy(outBuffer, header, 12);

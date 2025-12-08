@@ -53,9 +53,11 @@ Binaries will be created in the configured CMake output directory (commonly `bui
 
 Example (localhost):
 1. Start server:
-   - `build\server\server.exe`
+   - `cd server/`
+   - `server.exe 8089`
 2. In a second terminal start client:
-   - `build\client\client.exe 127.0.0.1`
+   - `cd client/`
+   - `client.exe 127.0.0.1 8089 movie.mjpeg`
 
 Notes:
 - The example client sends `SETUP movie.Mjpeg RTSP/1.0` with `client_port=25000`. The server opens an RTP UDP socket and uses the supplied client port for RTP packets.

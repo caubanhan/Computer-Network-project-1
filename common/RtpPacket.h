@@ -16,7 +16,7 @@ private:
     int timestamp;
     int ssrc;
 	size_t offset;
-    uint32_t clockrate() { return 90000; } // RTP clock rate for video
+    uint32_t clockrate() { return 90000; } // standard RTP clock rate for video
 public:
     RtpPacket();
 	void beginFrame(const uint8_t* frameData, int frameSize); // Initialize RTP packet with frame data
