@@ -24,19 +24,17 @@ This repository contains a networked server and a client implementation built wi
 Recommended workflow (from repository root): <br>
 NOTE !!: only for Windows
 
-1. Configure the project with CMake:
-
+1. build server
 ```bash
-cmake -G Ninja 
+cd ./server
+make all
 ```
 
-2. Build the project:
-
+2. build client
 ```bash
-ninja
+cd ./client
+make all
 ```
-
-Binaries will be created in the configured CMake output directory (commonly `build/server/` and `build/client/` or within `Debug`/`Release` variants depending on your CMake configuration).
 
 ## Build (Visual Studio 2022)
 1. Open the repository in Visual Studio: use __File > Open > Folder__ and select the project root.
