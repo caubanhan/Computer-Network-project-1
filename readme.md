@@ -1,88 +1,60 @@
-# Computer Network Project 1
+# RTSP Video Streaming Client/Server
 
-Simple client/server network project (C++17, CMake + Ninja).  
-This repository contains a networked server and a client implementation built with CMake (Ninja generator) and tested with Visual Studio 2022.
+A C++17 RTSP server and client for real-time video streaming over RTP/UDP.
 
-## Contents
-- `server/` server implementation (sources: `Server.h`, `Server.cpp`, `ServerWorker.h`, `ServerWorker.cpp`, `main.cpp`)
-- `client/` client implementation (sources: `Client.h`, `Client.cpp`, `main_client.cpp`)
-- `CMakeLists.txt` and build configuration at repository root
+## Quick Start
 
-## Goals
-- Provide a minimal, maintainable client/server example using modern C++ (C++17).
-- CMake-based cross-platform build with the Ninja generator.
-- Easy to build and run from both CLI and Visual Studio 2022.
-
-## Requirements
-- CMake >= 3.16 (project tested with `3.31.6-msvc6`)
-- Ninja build system
-- Visual Studio 2022 (recommended) or another modern C++ toolchain
-- C++17-compatible compiler
-- Compiler GCC MinGW64 (15.2.0 recommeneded)
-
-## Build (Command Line)
-Recommended workflow (from repository root):
-
-1. Create a build directory:
-
+### Build
 ```bash
-mkdir build
-cd build
-```
-
-2. Configure the project with CMake:
-
-```bash
-cmake -G Ninja 
-```
-
-3. Build the project:
-
-```bash
+mkdir build && cd build
+cmake -G Ninja ..
 ninja
 ```
 
-Binaries will be created in the configured CMake output directory (commonly `build/server/` and `build/client/` or within `Debug`/`Release` variants depending on your CMake configuration).
+### Run
+**Terminal 1 (Server):**
+```bash
+build\server\server.exe
+```
 
-## Build (Visual Studio 2022)
-1. Open the repository in Visual Studio: use __File > Open > Folder__ and select the project root.
-2. Visual Studio will detect `CMakeLists.txt`. Use the CMake menu or toolbar to __CMake: Configure__ and then __CMake: Build__.
-3. Select the CMake target for `server` or `client` from the CMake Targets view and run.
+**Terminal 2 (Client):**
+```bash
+build\client\client.exe
+```
 
-## Run
-- Default server port: `554` (see `server/main.cpp`, `#define DEFAULT_PORT 554`).
-- Example: Start the server (from a shell or VS debugger):
-  - Windows (from build output folder): `server.exe`
-- Run the client and point it at the server:
-  - `client.exe <server-host-or-ip>`
-  - The example client sends a simple `SETUP` RTSP message and listens for the server reply.
+Use the client window buttons: SETUP → PLAY → PAUSE/TEARDOWN
 
-Example (localhost):
-1. Start server:
-   - `build\server\server.exe`
-2. In a second terminal start client:
-   - `build\client\client.exe 127.0.0.1`
+## Components
+- **Server**: Streams MJPEG video over RTSP (TCP 554) with RTP/UDP (25000)
+- **Client**: Receives, decodes, and displays video with interactive UI
+- **Common**: RTP packet handling and H.264 packetization
 
-Notes:
-- The example client sends `SETUP movie.Mjpeg RTSP/1.0` with `client_port=25000`. The server opens an RTP UDP socket and uses the supplied client port for RTP packets.
-- The server code contains RTSP methods: `SETUP`, `PLAY`, `PAUSE`, `TEARDOWN`. RTP packetization is handled in `ServerWorker::sendRtp()`.
+## Requirements
+- CMake 3.16+, Ninja, Visual Studio 2022
+- C++17 compiler
+- SDL2 (included in `client/lib/` and `client/include/`)
 
-## Troubleshooting
-- Firewall: allow UDP/TCP ports used by server (default RTSP TCP 554 and RTP UDP client port such as 25000).
-- Ports <1024 may require elevated permissions on some systems.
-- If builds fail, confirm you have Ninja installed and that `cmake` on PATH is the required version.
+## Customizing SDL2 Library Paths
 
-## File layout
-- `server/` RTSP server code and worker threads
-- `client/` simple RTSP client examples
-- `common/` shared helpers (e.g., `RtpPacket.h`) (if present in repo)
+If you need to use a different SDL2 installation, edit **`client/CMakeLists.txt`** lines 17–18:
 
-## Contributing
-- Open PRs for fixes/features.
-- Keep changes focused and add short notes to the PR describing behavior.
+```cmake
+file(TO_CMAKE_PATH "D:/HCMUS/2025-2026/Computer Network/Code/client/lib" SDL_LIB)
+file(TO_CMAKE_PATH "D:/HCMUS/2025-2026/Computer Network/Code/client/include" SDL_INC)
+```
 
-## License
-No license file included. Add a `LICENSE` file to document allowed reuse (e.g., MIT).
+Replace with your SDL2 paths:
+```cmake
+file(TO_CMAKE_PATH "C:/your/path/to/SDL2/lib" SDL_LIB)
+file(TO_CMAKE_PATH "C:/your/path/to/SDL2/include" SDL_INC)
+```
+
+Or use system SDL2 (if installed globally):
+```cmake
+find_package(SDL2 REQUIRED)
+find_package(SDL2_ttf REQUIRED)
+target_link_libraries(client_app PRIVATE SDL2::SDL2 SDL2::SDL2_ttf)
+```
 
 ---
 
