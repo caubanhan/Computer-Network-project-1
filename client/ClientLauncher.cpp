@@ -1,15 +1,8 @@
 ﻿#define SDL_MAIN_HANDLED
 #include "Client.h"
 #include "VideoDisplay.h"
+#include "UIconfig.h"
 #include <iostream>
-
-// Re-define constants to match VideoDisplay for hit testing
-static const int WIN_W = 1300; 
-static const int WIN_H = 850;
-static const int BTN_Y = 730;
-static const int BTN_W = 150;
-static const int BTN_H = 50;
-static const int GAP = 40;
 
 static const SDL_Rect btnSetup = { 50, BTN_Y, BTN_W, BTN_H };
 static const SDL_Rect btnPlay  = { 50 + BTN_W + GAP, BTN_Y, BTN_W, BTN_H };
@@ -21,7 +14,7 @@ bool isClick(int mx, int my, SDL_Rect r) {
 }
 
 int main(int argc, char* argv[]) {
-    Client client(argv[1], argv[2] ? atoi(argv[2]) : 8089, 25000, argv[3] ? argv[3] : "movie.Mjpeg"); // Luong Nhan: updated to get args from command line
+    Client client(argv[1] ? argv[1] : "127.0.0.1", argv[2] ? atoi(argv[2]) : 8089, argv[3] ? atoi(argv[3]) : 25000, argv[4] ? argv[4] : "movie.Mjpeg"); // Luong Nhan: updated to get args from command line
     VideoDisplay display;
     
     if (!display.init()) return -1;

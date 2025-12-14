@@ -1,15 +1,6 @@
 #include "VideoDisplay.h"
 #include <iostream>
-
-// Button Layout Constants
-// window size 1380x820 (Constant)
-// Adjusted y positions to match the "bottom bar" look
-static const int WIN_W = 1300; 
-static const int WIN_H = 850;
-static const int BTN_Y = 730;
-static const int BTN_W = 150;
-static const int BTN_H = 50;
-static const int GAP = 40;
+#include "UIconfig.h"
 
 // Calculate X positions to center them nicely
 static const SDL_Rect btnSetup = { 50, BTN_Y, BTN_W, BTN_H };
@@ -42,7 +33,7 @@ bool VideoDisplay::init() {
     font = TTF_OpenFont("arial.ttf", 18); // Slightly smaller, cleaner font
     if (!font) std::cerr << "Warning: Failed to load arial.ttf\n";
 
-    window = SDL_CreateWindow("RTSP Client", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1380, 820, SDL_WINDOW_SHOWN);
+    window = SDL_CreateWindow("RTSP Client", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WIN_W + 80, WIN_H - 35, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
     return (window && renderer);
@@ -119,6 +110,7 @@ void VideoDisplay::drawButton(SDL_Rect rect, std::string text, int mx, int my, b
     }
 }
 
+// format seconds as MM:SS
 std::string timeFormat(int seconds) {
     int minutes = seconds / 60;
     int remainingSeconds = seconds % 60;
@@ -131,13 +123,9 @@ void VideoDisplay::renderUI(int clientState, int seconds, int mx, int my, bool m
     // 0=INIT, 1=READY, 2=PLAYING
 
     // 1. Draw Bottom Panel Background
-    SDL_Rect bottomPanel = { 0, 700, 800, 100 };
+    SDL_Rect bottomPanel = { 0, 730, 800, 100 };
     SDL_SetRenderDrawColor(renderer, 220, 220, 220, 255); // Light Gray Panel
     SDL_RenderFillRect(renderer, &bottomPanel);
-    
-    // Draw a separator line
-    SDL_SetRenderDrawColor(renderer, 180, 180, 180, 255);
-    SDL_RenderDrawLine(renderer, 0, 700, 800, 700);
 
     // 2. Determine which buttons are enabled based on RTSP State
     bool canSetup = (clientState == 0);          // Only if INIT
