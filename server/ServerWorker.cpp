@@ -15,6 +15,23 @@ ServerWorker::ServerWorker(SOCKET clientsocket, const sockaddr_in& clientAddr)
         << std::endl;
 }
 
+ServerWorker::~ServerWorker()
+{
+    std::cout << "Client disconnected. Cleaning up...\n";
+
+    // 1. Ra lệnh dừng gửi
+    sending.store(false);
+    state = INIT;
+
+    // 2. Chờ luồng gửi kết thúc công việc (Tránh lỗi Abort)
+    if (rtpThread.joinable()) {
+        rtpThread.join();
+    }
+
+    // 3. Đóng socket
+    if (rtpSocket != INVALID_SOCKET) closesocket(rtpSocket);
+    if (clientSocket != INVALID_SOCKET) closesocket(clientSocket);
+}
 
 void ServerWorker::processRtspRequest()
 {
@@ -28,33 +45,37 @@ void ServerWorker::processRtspRequest()
         S: Session: 123456
     */
     char buffer[2048] = { 0 };
-    int recvLen = recv(clientSocket, buffer, sizeof(buffer), 0);
-    if (recvLen <= 0) return;
-    std::string request(buffer);
-    std::cout << "RTSP Request:\n" << request << "\n";
 
-    // ===== 1. Parse request line =====
-    size_t line1End = request.find("\r\n");
-	std::string firstLine = request.substr(0, line1End); // first line = "SETUP movie.Mjpeg RTSP/1.0"
+    while (true) {
+        int recvLen = recv(clientSocket, buffer, sizeof(buffer), 0);
+        if (recvLen <= 0) return;
+        std::string request(buffer);
+        std::cout << "RTSP Request:\n" << request << "\n";
 
-    std::istringstream iss1(firstLine);
-	iss1 >> method >> fileName; // method = "SETUP", fileName = "movie.Mjpeg"
+        // ===== 1. Parse request line =====
+        size_t line1End = request.find("\r\n");
+        std::string firstLine = request.substr(0, line1End); // first line = "SETUP movie.Mjpeg RTSP/1.0"
 
-	// get "Cseq"
-	size_t line2End = request.find("\r\n", line1End + 2);
-	std::string secondLine = request.substr(line1End + 2, line2End - (line1End + 2));
-	std::string post;
-	std::istringstream iss2(secondLine); 
-    iss2 >> post >> cseq; // post = "CSeq:", cseq = "1"
+        std::istringstream iss1(firstLine);
+        iss1 >> method >> fileName; // method = "SETUP", fileName = "movie.Mjpeg"
 
-	// get "client_port"
-    size_t line3End = request.find("\r\n", line2End + 2);
-    size_t portPos = request.find("client_port=", line2End + 2);
-    size_t portStart = portPos + strlen("client_port=");
-	std::string portStr = request.substr(portStart, line3End - portStart); // portStr = "25000"
-    UDPport = std::stoi(portStr);
+        // get "Cseq"
+        size_t line2End = request.find("\r\n", line1End + 2);
+        std::string secondLine = request.substr(line1End + 2, line2End - (line1End + 2));
+        std::string post;
+        std::istringstream iss2(secondLine);
+        iss2 >> post >> cseq; // post = "CSeq:", cseq = "1"
 
-	executeRtspRequest();
+        // get "client_port"
+        size_t line3End = request.find("\r\n", line2End + 2);
+        size_t portPos = request.find("client_port=", line2End + 2);
+        size_t portStart = portPos + strlen("client_port=");
+        std::string portStr = request.substr(portStart, line3End - portStart); // portStr = "25000"
+        UDPport = std::stoi(portStr);
+
+        executeRtspRequest();
+        if (method == "TEARDOWN") break;
+    }
 }
 
 void ServerWorker::executeRtspRequest()
@@ -110,14 +131,19 @@ void ServerWorker::executeRtspRequest()
             // Start RTP sending thread
             sending.store(true);
 
-            std::thread rtpThread([this]() {
-                while (sending.load() && state == STATE::PLAYING) {
-                    this->sendRtp();
-					std::this_thread::sleep_for(std::chrono::milliseconds(50)); 
+            if (rtpThread.joinable()) rtpThread.join();
+            rtpThread = std::thread([this]() {
+                try {
+                    while (sending.load() && state == STATE::PLAYING) {
+                        this->sendRtp();
+                        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                    }
+                } catch (...) {
+                    sending.store(false);
                 }
-                });
+            });
 
-            rtpThread.detach();   
+            //rtpThread.detach();   
         }
     }   
 
@@ -170,7 +196,7 @@ void ServerWorker::sendRtp(){
 
     // 3. Send all RTP packets of this frame
     uint8_t packetBuf[1500];
-    int packetSize;
+    int packetSize = 0;     // set mac dinh = 0 ==> Tranh undefined behavior
     while (rtpPacket.getNextPacket(packetBuf, packetSize) && sending.load()) {
         // Basic validation
         if (packetSize <= 0 || packetSize > static_cast<int>(sizeof(packetBuf))) {

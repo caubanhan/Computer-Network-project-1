@@ -12,8 +12,8 @@
 
 # Compiled binaries
 *.exe
-*.dll
-*.lib
+#*.dll
+#*.lib
 *.exp
 *.pdb
 *.ilk
@@ -44,3 +44,8 @@ client/Release/
 # Ninja build files
 .ninja_deps
 .ninja_log
+
+# vscode settings
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json

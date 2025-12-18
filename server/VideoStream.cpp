@@ -3,7 +3,7 @@
 #include <iostream>
 
 VideoStream::VideoStream(std::string fName)
-    : videoFile(), fileName(std::move(fName)), frameNbr(0)
+    : fileName(std::move(fName)), frameNbr(0), position(0)
 {
     if (!fileName.empty()) {
         openFile(fileName);
@@ -12,59 +12,62 @@ VideoStream::VideoStream(std::string fName)
 
 void VideoStream::openFile(const std::string& filename)
 {
-    if (videoFile.is_open()) videoFile.close();
-    videoFile.open(filename, std::ios::binary);
-    if (!videoFile) {
+    std::ifstream file(filename, std::ios::binary | std::ios::ate);
+    if (!file) {
         throw std::runtime_error("Failed to open video file: " + filename);
     }
+
+    std::streamsize size = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    buffer.resize(size);
+    if (!file.read(reinterpret_cast<char*>(buffer.data()), size)) {
+        throw std::runtime_error("Failed to read video file: " + filename);
+    }
+
     fileName = filename;
     frameNbr = 0;
+    position = 0;
 }
 
 // Read next JPEG frame from a MJPEG-style file by scanning for 0xFFD8 ... 0xFFD9
 int VideoStream::getNextFrame(uint8_t* frameBuf, int bufSize)
 {
     if (!frameBuf || bufSize <= 0) return -1;
-    if (!videoFile.is_open()) return -1;
+    if (position >= buffer.size()) return -1; // End of buffer
 
-    int prev = -1;
-    int cur = -1;
+    size_t start_pos = -1;
 
     // Find JPEG start marker 0xFF 0xD8
-    while ((cur = videoFile.get()) != EOF) {
-        if (prev == 0xFF && cur == 0xD8) {
-            // start of frame found; write the two start bytes
-            int written = 0;
-            if (bufSize < 2) return -1;
-            frameBuf[written++] = 0xFF;
-            frameBuf[written++] = 0xD8;
-
-            int prevByte = 0xD8; // last written byte value
-            int byteRead;
-            // Read until end marker 0xFF 0xD9 (inclusive)
-            while ((byteRead = videoFile.get()) != EOF) {
-                if (written >= bufSize) {
-                    // buffer too small: skip until end marker, then return error
-                    int p = prevByte;
-                    int q;
-                    while ((q = videoFile.get()) != EOF) {
-                        if (p == 0xFF && q == 0xD9) break;
-                        p = q;
-                    }
-                    return -1;
-                }
-                frameBuf[written++] = static_cast<uint8_t>(byteRead);
-                if (prevByte == 0xFF && byteRead == 0xD9) {
-                    ++frameNbr;
-                    return written; // complete frame size
-                }
-                prevByte = byteRead;
-            }
-            return -1; // EOF before end marker
+    for (size_t i = position; i < buffer.size() - 1; ++i) {
+        if (buffer[i] == 0xFF && buffer[i + 1] == 0xD8) {
+            start_pos = i;
+            break;
         }
-        prev = cur;
     }
 
-    // No more frames
-    return -1;
-}           
+    if (start_pos == -1) return -1; // No more frames
+
+    // Find JPEG end marker 0xFF 0xD9
+    size_t end_pos = -1;
+    for (size_t i = start_pos + 2; i < buffer.size() - 1; ++i) {
+        if (buffer[i] == 0xFF && buffer[i + 1] == 0xD9) {
+            end_pos = i + 2; // Include the end marker
+            break;
+        }
+    }
+
+    if (end_pos == -1) return -1; // End of frame not found
+
+    size_t frame_size = end_pos - start_pos;
+    if (frame_size > bufSize) {
+        position = end_pos;
+        return -1; // Buffer too small
+    }
+
+    std::copy(buffer.begin() + start_pos, buffer.begin() + end_pos, frameBuf);
+    position = end_pos;
+    ++frameNbr;
+
+    return frame_size;
+}
