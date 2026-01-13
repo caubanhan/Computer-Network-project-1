@@ -1,0 +1,81 @@
+﻿#define SDL_MAIN_HANDLED
+#include "Client.h"
+#include "VideoDisplay.h"
+#include "UIconfig.h"
+#include <iostream>
+
+static const SDL_Rect btnSetup = { 50, BTN_Y, BTN_W, BTN_H };
+static const SDL_Rect btnPlay  = { 50 + BTN_W + GAP, BTN_Y, BTN_W, BTN_H };
+static const SDL_Rect btnPause = { 50 + 2*(BTN_W + GAP), BTN_Y, BTN_W, BTN_H };
+static const SDL_Rect btnTd    = { 50 + 3*(BTN_W + GAP), BTN_Y, BTN_W, BTN_H };
+
+bool isClick(int mx, int my, SDL_Rect r) {
+    return (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h);
+}
+
+int main(int argc, char* argv[]) {
+    Client client(argv[1] ? argv[1] : "127.0.0.1", argv[2] ? atoi(argv[2]) : 8089, argv[3] ? atoi(argv[3]) : 25000, argv[4] ? argv[4] : "movie.Mjpeg"); // Luong Nhan: updated to get args from command line
+    VideoDisplay display;
+    
+    if (!display.init()) return -1;
+
+    bool quit = false;
+    std::vector<uint8_t> rgb; 
+    rgb.clear();
+    int w = 0, h = 0;
+
+    // Mouse State Variables
+    int mx = 0, my = 0;
+    bool mouseDown = false;
+
+    while (!quit) {
+        SDL_Event e;
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) quit = true;
+
+            // Track Mouse Motion
+            if (e.type == SDL_MOUSEMOTION) {
+                mx = e.motion.x;
+                my = e.motion.y;
+            }
+            // Track Mouse Down
+            if (e.type == SDL_MOUSEBUTTONDOWN) {
+                if (e.button.button == SDL_BUTTON_LEFT) {
+                    mouseDown = true;
+                    // Logic for actions (On Click)
+                    if (isClick(mx, my, btnSetup)) client.setup();
+                    else if (isClick(mx, my, btnPlay)) client.play();
+                    else if (isClick(mx, my, btnPause)) client.pause();
+                    else if (isClick(mx, my, btnTd)) client.teardown();
+                }
+            }
+            // Track Mouse Up
+            if (e.type == SDL_MOUSEBUTTONUP) {
+                if (e.button.button == SDL_BUTTON_LEFT) {
+                    mouseDown = false;
+                }
+            }
+        }
+
+        // 1. Draw Main Window Background (Light Gray)
+        SDL_SetRenderDrawColor(display.getRenderer(), 230, 230, 230, 255); 
+        SDL_RenderClear(display.getRenderer());
+
+        // 2. Render Video (if available)
+        if (client.getLatestFrame(rgb, w, h) || !rgb.empty()) {
+            display.renderFrame(rgb, w, h);
+        }
+
+        // 3. Render UI (Pass Mouse State!)
+        display.renderUI(
+            (int)client.getState(), 
+            client.getPlaySeconds(),
+            mx, my, mouseDown
+        );
+
+        SDL_Delay(10);
+    }
+
+    client.teardown();
+    return 0;
+}

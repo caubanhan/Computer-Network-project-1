@@ -9,10 +9,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <iostream>
-#include <memory>
 #include <string>
+#include <memory>
 
-// Need to link with Ws2_32.lib
+// optional: to link with Ws2_32.lib (for msvc compiler)
 #pragma comment (lib, "Ws2_32.lib")
 
 class Server {

@@ -1,24 +1,67 @@
+﻿#pragma once
 #include <string>
-#include <winsock.h>
+#include <vector>
+#include <mutex>
+#include <atomic>
 #include <thread>
-#include "../common/RtpPacket.h"
-class Client {
-private:
-    std::string serverHost;
-    int serverPort;
-    int rtpPort;
-    SOCKET rtspSocket;
-    SOCKET rtpSocket;
-    std::thread listenWrite;
-    std::thread recvServerReply;
-    RtpPacket rtpPacket;
+#include <deque> // for cahing
+#include <winsock2.h> // Needed for RTSP TCP Socket
 
+#include "RtpReceiver.h"
+#include "MjpegDecoder.h"
+
+class Client {
 public:
-    Client(std::string host, int port, int rtpPort);
-    void setup();
-    void play();
-    void pause();
-    void teardown();
-    void parseRTSP(std::string msg);
-    void receiveRtpPackets();
+    enum State { INIT = 0, READY, PLAYING };
+
+    Client(const std::string& serverAddr, int rtspPort, int rtpListenPort, const std::string& fileName);
+    ~Client();
+
+    // RTSP Control
+    bool setup();
+    bool play();
+    bool pause();
+    bool teardown();
+
+    bool getLatestFrame(std::vector<uint8_t>& outRgb, int& outW, int& outH);
+    State getState() const { return state.load(); }
+    int getPlaySeconds() const { return playSeconds.load(); }
+
+private:
+    void receiveLoop();
+    
+    // Helper for RTSP
+    bool sendRtspRequest(const std::string& method);
+
+private:
+    std::string serverAddr;
+    int rtspPort;
+    int rtpPort;
+    std::string fileName;
+
+    // RTSP Connection Variables
+    SOCKET rtspSocket;
+    int cseq;           // Sequence number (increments per request)
+    std::string sessionID; 
+
+    std::unique_ptr<RtpReceiver> rtpReceiver;
+    std::thread workerThread;
+    std::atomic<bool> workerRunning;
+
+    // Decoding
+    std::vector<uint8_t> latestRgb;
+    int latestW;
+    int latestH;
+    std::mutex latestMutex;
+    std::atomic<bool> frameAvailable;
+
+    // update for caching frames
+    std::deque<std::vector<uint8_t>> frameCache;
+    std::mutex cacheMutex;
+    std::atomic<bool> isRenderActive;
+    std::chrono::steady_clock::time_point lastFrameTime; // then set this to 40ms (25fps) for not burning CPU client
+
+    std::atomic<State> state;
+    std::atomic<int> playSeconds;
+    int totalFramesRendered;
 };

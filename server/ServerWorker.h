@@ -3,6 +3,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <atomic>
+#include <thread>
 #include <cstdint>
 #include <string>
 #include <sstream>
@@ -32,11 +33,13 @@ private:
     std::string sessionId;
     int UDPport;
 
+    std::thread rtpThread;            
 	std::atomic<bool> sending{ false }; // RTP sending flag
     
-	uint8_t frameBuf[65536]; // Buffer to hold video frame data
+	uint8_t frameBuf[655360]; // Buffer to hold video frame data
 public:
     ServerWorker(SOCKET clientsocket, const sockaddr_in& clientAddr);
+	~ServerWorker();
     void processRtspRequest();
 	void executeRtspRequest();
     void replyRtsp(std::string str);

@@ -5,9 +5,9 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-#define DEFAULT_PORT 554
+#define DEFAULT_PORT 8089
 
-int main()
+int main(int argc, char* argv[])  // Luong Nhan: I updated main() to get arguments from command line
 {
     // Initialize Winsock at the start
     WSADATA wsaData;
@@ -19,7 +19,7 @@ int main()
     printf("WSAStartup called!\n");
 
     Server server;
-    server.init(DEFAULT_PORT);
+    server.init(argv[1] ? atoi(argv[1]) : DEFAULT_PORT); // Use port from command line or default
     server.startListening();
 
     while (true)

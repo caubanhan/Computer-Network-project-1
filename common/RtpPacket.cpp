@@ -1,4 +1,4 @@
-#include <winsock2.h>
+﻿#include <winsock2.h>
 #include <ws2tcpip.h>
 
 #pragma comment(lib, "ws2_32.lib")
@@ -9,11 +9,11 @@ RtpPacket::RtpPacket()
 {
     // RTP header fields (example values)
     header[0] = (2 << 6);   // Version 2, no padding, no extension, 0 CSRC
-    header[1] = 96;         // Payload type 96 (dynamic)
+    header[1] = 26;
 
     seqNum = 0;
     timestamp = 0;
-    ssrc = 123456; // example SSRC
+    ssrc = 123456; // pick random SSRC
 
     offset = 0;
 }
@@ -25,11 +25,11 @@ void RtpPacket::beginFrame(const uint8_t* frameData, int frameSize)
     offset = 0;
 
     // Update timestamp per frame (example: +3600)
-    timestamp += 3600;
+    timestamp += TIMESTAMP_INCREMENT;
 
     // Prepare RTP header
     header[0] = (2 << 6);  // Version 2
-    header[1] = 96;        // Payload type 96 (dynamic)
+    header[1] = 26;        // Payload type 26 for JPEG (static)
 }
 
 bool RtpPacket::getNextPacket(uint8_t* outBuffer, int& outSize)
@@ -41,16 +41,26 @@ bool RtpPacket::getNextPacket(uint8_t* outBuffer, int& outSize)
 
     // Compute packet payload size
     int remaining = payload.size() - offset;
+    bool isLastPacket = (remaining <= MAX_RTP_PAYLOAD);
     int packetPayload = remaining > MAX_RTP_PAYLOAD ? MAX_RTP_PAYLOAD : remaining;
 
     // Build RTP header
-    uint16_t seq = htons(seqNum++);
-    uint32_t ts = htonl(timestamp);
-    uint32_t id = htonl(ssrc);
+    // dont need to use htons() and htonl() since we set byte manually in this lab
+    uint16_t seq = seqNum++;
+    uint32_t ts = timestamp;
+    uint32_t id = ssrc;
 
     // Copy header bytes
     std::memcpy(outBuffer, header, 12);
 
+    if (isLastPacket) {
+        outBuffer[1] |= 0x80; // Marker = 1
+    }
+    else {
+        outBuffer[1] &= 0x7F; // Marker = 0
+    }
+
+    // use & 0xFF to ensure only the last 8 bits are taken
     // Set sequence number
     outBuffer[2] = (seq >> 8) & 0xFF;
     outBuffer[3] = seq & 0xFF;

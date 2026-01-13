@@ -10,9 +10,15 @@
 *.vcxproj.user
 *.vcxproj.filters
 
+# VS code
+.vscode/
+
+# class diagrams
+*."class diagram"/
+
 # Compiled binaries
 *.exe
-*.dll
+*.dll  // for portable dlls, consider keeping them
 *.lib
 *.exp
 *.pdb
@@ -28,7 +34,8 @@
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
-Makefile
+# Makefile
+.txt
 
 # Logs & temp
 *.log
@@ -44,3 +51,15 @@ client/Release/
 # Ninja build files
 .ninja_deps
 .ninja_log
+*.ninja
+build.ninja
+
+# vscode settings
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+*.json
+
+# media files
+*.mjpeg
+*.Mjpeg

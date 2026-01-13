@@ -4,8 +4,8 @@ Simple client/server network project (C++17, CMake + Ninja).
 This repository contains a networked server and a client implementation built with CMake (Ninja generator) and tested with Visual Studio 2022.
 
 ## Contents
-- `server/` � server implementation (sources: `Server.h`, `Server.cpp`, `ServerWorker.h`, `ServerWorker.cpp`, `main.cpp`)
-- `client/` � client implementation (sources: `Client.h`, `Client.cpp`, `main_client.cpp`)
+- `server/` server implementation (sources: `Server.h`, `Server.cpp`, `ServerWorker.h`, `ServerWorker.cpp`, `main.cpp`)
+- `client/` client implementation (sources: `Client.h`, `Client.cpp`, `main_client.cpp`)
 - `CMakeLists.txt` and build configuration at repository root
 
 ## Goals
@@ -18,30 +18,23 @@ This repository contains a networked server and a client implementation built wi
 - Ninja build system
 - Visual Studio 2022 (recommended) or another modern C++ toolchain
 - C++17-compatible compiler
+- Compiler GCC MinGW64 (15.2.0 recommeneded)
 
 ## Build (Command Line)
-Recommended workflow (from repository root):
+Recommended workflow (from repository root): <br>
+NOTE !!: only for Windows
 
-1. Create a build directory:
-
+1. build server
 ```bash
-mkdir build
-cd build
+cd ./server
+make all
 ```
 
-2. Configure the project with CMake:
-
+2. build client
 ```bash
-cmake -G Ninja 
+cd ./client
+make all
 ```
-
-3. Build the project:
-
-```bash
-ninja
-```
-
-Binaries will be created in the configured CMake output directory (commonly `build/server/` and `build/client/` or within `Debug`/`Release` variants depending on your CMake configuration).
 
 ## Build (Visual Studio 2022)
 1. Open the repository in Visual Studio: use __File > Open > Folder__ and select the project root.
@@ -49,18 +42,20 @@ Binaries will be created in the configured CMake output directory (commonly `bui
 3. Select the CMake target for `server` or `client` from the CMake Targets view and run.
 
 ## Run
-- Default server port: `554` (see `server/main.cpp`, `#define DEFAULT_PORT 554`).
+- Default server port: `8089` (see `server/main.cpp`, `#define DEFAULT_PORT 8089`).
 - Example: Start the server (from a shell or VS debugger):
-  - Windows (from build output folder): `server.exe`
+  - Windows (from build output folder): `server.exe <server-port>`
 - Run the client and point it at the server:
-  - `client.exe <server-host-or-ip>`
+  - `client_app.exe <server-host-or-ip> <server-port> <file-name>`
   - The example client sends a simple `SETUP` RTSP message and listens for the server reply.
 
 Example (localhost):
 1. Start server:
-   - `build\server\server.exe`
+   - `cd server/`
+   - `server.exe 8089`
 2. In a second terminal start client:
-   - `build\client\client.exe 127.0.0.1`
+   - `cd client/`
+   - `client.exe 127.0.0.1 8089 movie.mjpeg`
 
 Notes:
 - The example client sends `SETUP movie.Mjpeg RTSP/1.0` with `client_port=25000`. The server opens an RTP UDP socket and uses the supplied client port for RTP packets.
@@ -72,9 +67,9 @@ Notes:
 - If builds fail, confirm you have Ninja installed and that `cmake` on PATH is the required version.
 
 ## File layout
-- `server/` � RTSP server code and worker threads
-- `client/` � simple RTSP client examples
-- `common/` � shared helpers (e.g., `RtpPacket.h`) � (if present in repo)
+- `server/` RTSP server code and worker threads
+- `client/` simple RTSP client examples
+- `common/` shared helpers (e.g., `RtpPacket.h`) (if present in repo)
 
 ## Contributing
 - Open PRs for fixes/features.

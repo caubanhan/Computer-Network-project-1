@@ -2,9 +2,7 @@
 
 // Constructor: initialize members
 Server::Server()
-    : listenSock(INVALID_SOCKET), port(0), wsaInitialized(false)
-{
-}
+    : listenSock(INVALID_SOCKET), port(0), wsaInitialized(false) {}
 
 // Destructor: close socket and cleanup Winsock if initialized
 Server::~Server()
@@ -18,6 +16,7 @@ Server::~Server()
         wsaInitialized = false;
     }
 }
+
 // Need WSACleanup() when init = false
 bool Server::init(int port)
 {

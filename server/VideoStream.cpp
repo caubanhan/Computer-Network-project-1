@@ -14,7 +14,7 @@ void VideoStream::openFile(const std::string& filename)
 {
     if (videoFile.is_open()) videoFile.close();
     videoFile.open(filename, std::ios::binary);
-    if (!videoFile) {
+    if (!videoFile || videoFile.fail() || !videoFile.is_open()) {
         throw std::runtime_error("Failed to open video file: " + filename);
     }
     fileName = filename;
